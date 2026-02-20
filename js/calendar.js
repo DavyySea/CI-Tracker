@@ -33,21 +33,29 @@
         const events = [];
         const data = app.data;
 
-        // Meetings: meeting date + next meeting date + action items
+        // Meetings: meeting date + follow-up date + action items
         (data.meetings || []).forEach(m => {
-            if (m.dateTime) {
-                events.push({ type: 'meeting', date: m.dateTime,
-                    label: `${m.area || 'Meeting'} CI Meeting`, area: m.area || '', ref: m });
+            const meetingDate = m.date || m.dateTime;
+            if (meetingDate) {
+                events.push({ type: 'meeting', date: meetingDate,
+                    label: m.title || `${m.area || 'Meeting'} CI Meeting`,
+                    area: m.section || m.area || '', ref: m });
+            }
+            if (m.followupDate) {
+                events.push({ type: 'meeting', date: m.followupDate,
+                    label: `Follow-up: ${m.title || 'Meeting'}`,
+                    area: m.section || m.area || '', ref: m });
             }
             if (m.nextMeetingDate) {
                 events.push({ type: 'meeting', date: m.nextMeetingDate,
-                    label: `Next: ${m.area || 'Meeting'} CI Meeting`, area: m.area || '', ref: m });
+                    label: `Next: ${m.title || m.area || 'Meeting'}`,
+                    area: m.section || m.area || '', ref: m });
             }
             (m.actionItems || []).forEach(a => {
                 if (a.dueDate && a.status !== 'Done') {
                     events.push({ type: 'action', date: a.dueDate,
-                        label: a.text, area: m.area || '',
-                        ref: { ...a, meetingArea: m.area } });
+                        label: a.text, area: m.section || m.area || '',
+                        ref: { ...a, meetingTitle: m.title, meetingArea: m.area } });
                 }
             });
         });
@@ -87,6 +95,25 @@
                 events.push({ type: 'process', date: doc.lastReviewedDate,
                     label: doc.name, area: doc.area || '', ref: doc });
             }
+        });
+
+        // Issues: next action due date
+        (data.issues || []).forEach(issue => {
+            if (issue.nextActionDueDate && issue.status !== 'Closed') {
+                events.push({ type: 'action', date: issue.nextActionDueDate,
+                    label: issue.nextAction || issue.title || 'Issue action due',
+                    area: issue.section || '', ref: issue });
+            }
+        });
+
+        // SC Area improvements
+        (data.scAreas || []).forEach(area => {
+            (area.improvements || []).forEach(imp => {
+                if (imp.date) {
+                    events.push({ type: 'project', date: imp.date,
+                        label: imp.title || 'Improvement', area: area.name || '', ref: imp });
+                }
+            });
         });
 
         return events;
@@ -237,13 +264,16 @@
         const lines = [];
         if (e.type === 'meeting') {
             const m = e.ref;
+            if (m.time) lines.push(`Time: ${escapeHtml(m.time)}${m.endTime ? '–' + escapeHtml(m.endTime) : ''}`);
+            if (m.section || m.type) lines.push([m.section, m.type].filter(Boolean).map(escapeHtml).join(' · '));
             if (m.attendees) lines.push(`Attendees: ${escapeHtml(m.attendees)}`);
         } else if (e.type === 'action') {
             const a = e.ref;
-            if (a.owner)        lines.push(`Owner: ${escapeHtml(a.owner)}`);
-            if (a.projectTitle) lines.push(`Project: ${escapeHtml(a.projectTitle)}`);
-            if (a.meetingArea)  lines.push(`Meeting: ${escapeHtml(a.meetingArea)}`);
-            if (a.status)       lines.push(`Status: ${escapeHtml(a.status)}`);
+            if (a.owner)         lines.push(`Owner: ${escapeHtml(a.owner)}`);
+            if (a.projectTitle)  lines.push(`Project: ${escapeHtml(a.projectTitle)}`);
+            if (a.meetingTitle)  lines.push(`Meeting: ${escapeHtml(a.meetingTitle)}`);
+            else if (a.meetingArea) lines.push(`Meeting: ${escapeHtml(a.meetingArea)}`);
+            if (a.status)        lines.push(`Status: ${escapeHtml(a.status)}`);
         } else if (e.type === 'project') {
             const p = e.ref;
             if (p.status) lines.push(`Status: ${escapeHtml(p.status)}`);

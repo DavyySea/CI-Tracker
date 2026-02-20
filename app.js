@@ -18,7 +18,8 @@ const app = {
         areaImprovements: [],
         contacts: [],
         meetingTypes: [],
-        meetingSections: []
+        meetingSections: [],
+        scAreas: []
     },
     currentPage: 'dashboard',
     currentProjectId: null,

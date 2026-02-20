@@ -368,7 +368,7 @@
         if (!container) return;
         container.innerHTML = _pickerSelectedIds.map(id => {
             const name = typeof getContactName === 'function' ? getContactName(id) : id;
-            return `<span class="attendee-tag">${escapeHtml(name)}<button type="button" class="attendee-tag-remove" onclick="app.pickerRemove('${id}')">&times;</button></span>`;
+            return `<span class="attendee-tag">${escapeHtml(name)}<button type="button" class="attendee-tag-edit" onclick="app.pickerEditContact('${id}')" title="Edit contact">✏</button><button type="button" class="attendee-tag-remove" onclick="app.pickerRemove('${id}')">&times;</button></span>`;
         }).join('');
     }
 
@@ -389,9 +389,29 @@
         const existing = typeof searchContacts === 'function'
             ? searchContacts(name).find(c => c.name.toLowerCase() === name.toLowerCase())
             : null;
-        const contact = existing
-            || (typeof createContactFromName === 'function' ? createContactFromName(name) : { id: generateId(), name });
-        pickerSelect(contact.id);
+        if (existing) {
+            pickerSelect(existing.id);
+            return;
+        }
+        // Open the full contact modal so the user can fill in email, company, etc.
+        if (typeof showContactModal === 'function') {
+            app._pickerContactCallback = function(contact) {
+                pickerSelect(contact.id);
+            };
+            showContactModal({ name: name.trim() });
+        } else {
+            // Fallback: create minimal contact
+            const contact = typeof createContactFromName === 'function'
+                ? createContactFromName(name)
+                : { id: generateId(), name: name.trim() };
+            pickerSelect(contact.id);
+        }
+    }
+
+    function pickerEditContact(contactId) {
+        if (typeof editContact === 'function') {
+            editContact(contactId);
+        }
     }
 
     function pickerRemove(contactId) {
@@ -491,15 +511,15 @@
 
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                                 <div class="form-group">
-                                    <label>Section / Category *</label>
-                                    <input type="text" id="meetingSection" class="form-control" required
+                                    <label>Section / Category</label>
+                                    <input type="text" id="meetingSection" class="form-control"
                                            list="sectionList" value="${escapeHtml(prefillData.section || '')}"
                                            placeholder="e.g. Planning">
                                     <datalist id="sectionList">${buildDatalistOptions(getSections())}</datalist>
                                 </div>
                                 <div class="form-group">
-                                    <label>Meeting Type *</label>
-                                    <input type="text" id="meetingType" class="form-control" required
+                                    <label>Meeting Type</label>
+                                    <input type="text" id="meetingType" class="form-control"
                                            list="typeList" value="${escapeHtml(prefillData.type || '')}"
                                            placeholder="e.g. Team Meeting">
                                     <datalist id="typeList">${buildDatalistOptions(getTypes())}</datalist>
@@ -671,8 +691,8 @@
         const section = document.getElementById('meetingSection').value;
         const type = document.getElementById('meetingType').value;
 
-        if (!title || !date || !section || !type) {
-            showToast('Please fill in all required fields', 'error');
+        if (!title) {
+            showToast('Meeting title is required', 'error');
             return;
         }
 
@@ -1300,9 +1320,10 @@
     }
 
     // Expose functions to app namespace
-    app.pickerSelect   = pickerSelect;
-    app.pickerAddNew   = pickerAddNew;
-    app.pickerRemove   = pickerRemove;
+    app.pickerSelect       = pickerSelect;
+    app.pickerAddNew       = pickerAddNew;
+    app.pickerRemove       = pickerRemove;
+    app.pickerEditContact  = pickerEditContact;
     app.showCreateMeetingModal = showCreateMeetingModal;
     app.showQuickCaptureMeetingModal = showQuickCaptureMeetingModal;
     app.closeMeetingModal = closeMeetingModal;

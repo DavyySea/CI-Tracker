@@ -153,6 +153,7 @@
     function closeContactModal() {
         const modal = document.getElementById('contactModal');
         if (modal) modal.remove();
+        app._pickerContactCallback = null;
     }
 
     function saveContact() {
@@ -188,6 +189,12 @@
         closeContactModal();
         showToast(`Contact ${id ? 'updated' : 'added'}`, 'success');
         if (app.currentPage === 'contacts') renderContactsPage();
+        // If opened from attendee picker, auto-add this contact to the picker
+        if (typeof app._pickerContactCallback === 'function') {
+            const cb = app._pickerContactCallback;
+            app._pickerContactCallback = null;
+            cb(contact);
+        }
     }
 
     function editContact(contactId) {
