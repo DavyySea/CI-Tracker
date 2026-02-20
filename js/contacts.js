@@ -185,15 +185,17 @@
             if (typeof logAudit === 'function') logAudit('create', 'contact', `Added contact: ${name}`);
         }
 
+        // Capture callback before closeContactModal clears it
+        const pickerCb = app._pickerContactCallback;
+
         saveData();
         closeContactModal();
         showToast(`Contact ${id ? 'updated' : 'added'}`, 'success');
         if (app.currentPage === 'contacts') renderContactsPage();
+
         // If opened from attendee picker, auto-add this contact to the picker
-        if (typeof app._pickerContactCallback === 'function') {
-            const cb = app._pickerContactCallback;
-            app._pickerContactCallback = null;
-            cb(contact);
+        if (typeof pickerCb === 'function') {
+            pickerCb(contact);
         }
     }
 
