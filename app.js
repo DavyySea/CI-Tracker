@@ -15,7 +15,10 @@ const app = {
         processDocs: [],
         meetings: [],
         products: [],
-        areaImprovements: []
+        areaImprovements: [],
+        contacts: [],
+        meetingTypes: [],
+        meetingSections: []
     },
     currentPage: 'dashboard',
     currentProjectId: null,
@@ -782,6 +785,9 @@ function renderCurrentPage() {
             break;
         case 'areas':
             if (typeof renderAreasPage === 'function') renderAreasPage();
+            break;
+        case 'contacts':
+            if (typeof renderContactsPage === 'function') renderContactsPage();
             break;
         case 'calendar':
             if (typeof renderCalendarPage === 'function') renderCalendarPage();

@@ -18,6 +18,7 @@
 
     let currentView = 'list'; // 'list' or 'timeline'
     let activeMeetingId = null; // For live note-taking mode
+    let _pickerSelectedIds = []; // Attendee picker state
 
     // Initialize when DOM is ready
     if (document.readyState === 'loading') {
@@ -205,6 +206,7 @@
                         <div style="font-size: 13px; color: var(--muted);">
                             ${meeting.date ? formatDate(new Date(meeting.date)) : 'No date'}
                             ${meeting.time ? ' • ' + meeting.time : ''}
+                            ${meeting.endTime ? '–' + meeting.endTime : ''}
                             ${meeting.location ? ' • ' + escapeHtml(meeting.location) : ''}
                         </div>
                     </div>
@@ -213,9 +215,9 @@
                         ${meeting.section ? `<span class="status-badge">${escapeHtml(meeting.section)}</span>` : ''}
                     </div>
                 </div>
-                ${meeting.attendees ? `
+                ${getMeetingAttendeesDisplay(meeting) ? `
                     <div style="font-size: 13px; margin-bottom: 8px; color: var(--text-2);">
-                        <strong>Attendees:</strong> ${escapeHtml(meeting.attendees)}
+                        <strong>Attendees:</strong> ${escapeHtml(getMeetingAttendeesDisplay(meeting))}
                     </div>
                 ` : ''}
                 <div style="display: flex; gap: 16px; font-size: 13px; color: var(--muted); flex-wrap: wrap;">
@@ -311,6 +313,134 @@
         container.innerHTML = html;
     }
 
+    // ─── Attendee Picker ──────────────────────────────────────────────────────
+
+    function initAttendeePicker(existingIds) {
+        _pickerSelectedIds = Array.isArray(existingIds) ? [...existingIds] : [];
+        renderPickerTags();
+
+        const input    = document.getElementById('attendeeInput');
+        const dropdown = document.getElementById('attendeeDropdown');
+        if (!input || !dropdown) return;
+
+        input.addEventListener('input', () => {
+            const q = input.value.trim();
+            if (!q) { dropdown.classList.add('hidden'); return; }
+            const all = typeof searchContacts === 'function' ? searchContacts(q) : [];
+            const filtered = all.filter(c => !_pickerSelectedIds.includes(c.id));
+            let html = filtered.map(c => `
+                <li class="attendee-option" onclick="app.pickerSelect('${c.id}')">
+                    <span class="attendee-option-avatar">${escapeHtml(getInitials(c.name))}</span>
+                    <span><strong>${escapeHtml(c.name)}</strong>${c.title ? ' · <small>' + escapeHtml(c.title) + '</small>' : ''}</span>
+                </li>`).join('');
+            if (q.length >= 1) {
+                html += `<li class="attendee-option attendee-option-new" onclick="app.pickerAddNew(document.getElementById('attendeeInput').value.trim())">
+                    + Add "<strong>${escapeHtml(q)}</strong>" as new contact
+                </li>`;
+            }
+            dropdown.innerHTML = html || '<li class="attendee-option-empty">No matching contacts</li>';
+            dropdown.classList.remove('hidden');
+        });
+
+        input.addEventListener('keydown', e => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const q = input.value.trim();
+                if (q) app.pickerAddNew(q);
+            }
+            if (e.key === 'Escape') dropdown.classList.add('hidden');
+        });
+
+        document.addEventListener('click', function outsideClick(e) {
+            if (!e.target.closest('#attendeePicker')) {
+                dropdown.classList.add('hidden');
+                document.removeEventListener('click', outsideClick);
+            }
+        });
+    }
+
+    function renderPickerTags() {
+        const container = document.getElementById('attendeeTagsList');
+        if (!container) return;
+        container.innerHTML = _pickerSelectedIds.map(id => {
+            const name = typeof getContactName === 'function' ? getContactName(id) : id;
+            return `<span class="attendee-tag">${escapeHtml(name)}<button type="button" class="attendee-tag-remove" onclick="app.pickerRemove('${id}')">&times;</button></span>`;
+        }).join('');
+    }
+
+    function pickerSelect(contactId) {
+        if (!_pickerSelectedIds.includes(contactId)) {
+            _pickerSelectedIds.push(contactId);
+            renderPickerTags();
+        }
+        const input    = document.getElementById('attendeeInput');
+        const dropdown = document.getElementById('attendeeDropdown');
+        if (input) input.value = '';
+        if (dropdown) dropdown.classList.add('hidden');
+        if (input) input.focus();
+    }
+
+    function pickerAddNew(name) {
+        if (!name || !name.trim()) return;
+        const existing = typeof searchContacts === 'function'
+            ? searchContacts(name).find(c => c.name.toLowerCase() === name.toLowerCase())
+            : null;
+        const contact = existing
+            || (typeof createContactFromName === 'function' ? createContactFromName(name) : { id: generateId(), name });
+        pickerSelect(contact.id);
+    }
+
+    function pickerRemove(contactId) {
+        _pickerSelectedIds = _pickerSelectedIds.filter(id => id !== contactId);
+        renderPickerTags();
+    }
+
+    function getInitials(name) {
+        if (!name) return '?';
+        const parts = name.trim().split(/\s+/);
+        return parts.length === 1 ? parts[0][0].toUpperCase()
+            : (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+
+    function getMeetingAttendeesDisplay(meeting) {
+        if (meeting.attendeeIds && meeting.attendeeIds.length > 0) {
+            return meeting.attendeeIds
+                .map(id => typeof getContactName === 'function' ? getContactName(id) : id)
+                .join(', ');
+        }
+        return meeting.attendees || '';
+    }
+
+    function getDefaultSections() {
+        return ['Electrical','Mechanical','Procurement','Manufacturing',
+                'Warehouse','Quality','Planning','Logistics','Leadership','Other'];
+    }
+    function getDefaultTypes() {
+        return ['1:1','Standup','Gemba Walk','Team Meeting','Supplier Call',
+                'Project Review','Problem Solving','QBR','Other'];
+    }
+    function getSections() {
+        const s = app.data.meetingSections;
+        return (s && s.length) ? s : getDefaultSections();
+    }
+    function getTypes() {
+        const t = app.data.meetingTypes;
+        return (t && t.length) ? t : getDefaultTypes();
+    }
+    function buildDatalistOptions(arr) {
+        return arr.map(v => `<option value="${escapeHtml(v)}">`).join('');
+    }
+
+    // ─── Save new section/type values back to the global list ────────────────
+    function persistCustomValue(value, listKey, defaultsFn) {
+        if (!value) return;
+        const current = app.data[listKey] && app.data[listKey].length
+            ? app.data[listKey] : defaultsFn();
+        if (!current.includes(value)) {
+            app.data[listKey] = [...current, value];
+        }
+    }
+
     // Create Meeting Modal (WITH Notes Sections - All-in-One)
     function showCreateMeetingModal(prefillData = {}) {
         const now = new Date();
@@ -340,48 +470,35 @@
                                        value="${escapeHtml(prefillData.title || '')}">
                             </div>
 
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
                                 <div class="form-group">
                                     <label>Date *</label>
                                     <input type="date" id="meetingDate" class="form-control" required value="${prefillData.date || today}">
                                 </div>
-
                                 <div class="form-group">
-                                    <label>Time</label>
+                                    <label>Start Time</label>
                                     <input type="time" id="meetingTime" class="form-control" value="${prefillData.time || currentTime}">
+                                </div>
+                                <div class="form-group">
+                                    <label>End Time</label>
+                                    <input type="time" id="meetingEndTime" class="form-control" value="${prefillData.endTime || ''}">
                                 </div>
                             </div>
 
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                                 <div class="form-group">
-                                    <label>Section/Category *</label>
-                                    <select id="meetingSection" class="form-control" required>
-                                        <option value="">Select Section</option>
-                                        <option value="Electrical" ${prefillData.section === 'Electrical' ? 'selected' : ''}>Electrical</option>
-                                        <option value="Mechanical" ${prefillData.section === 'Mechanical' ? 'selected' : ''}>Mechanical</option>
-                                        <option value="Procurement" ${prefillData.section === 'Procurement' ? 'selected' : ''}>Procurement</option>
-                                        <option value="Manufacturing" ${prefillData.section === 'Manufacturing' ? 'selected' : ''}>Manufacturing</option>
-                                        <option value="Warehouse" ${prefillData.section === 'Warehouse' ? 'selected' : ''}>Warehouse</option>
-                                        <option value="Quality" ${prefillData.section === 'Quality' ? 'selected' : ''}>Quality</option>
-                                        <option value="Planning" ${prefillData.section === 'Planning' ? 'selected' : ''}>Planning</option>
-                                        <option value="Leadership" ${prefillData.section === 'Leadership' ? 'selected' : ''}>Leadership</option>
-                                        <option value="Other" ${prefillData.section === 'Other' ? 'selected' : ''}>Other</option>
-                                    </select>
+                                    <label>Section / Category *</label>
+                                    <input type="text" id="meetingSection" class="form-control" required
+                                           list="sectionList" value="${escapeHtml(prefillData.section || '')}"
+                                           placeholder="e.g. Planning">
+                                    <datalist id="sectionList">${buildDatalistOptions(getSections())}</datalist>
                                 </div>
-
                                 <div class="form-group">
                                     <label>Meeting Type *</label>
-                                    <select id="meetingType" class="form-control" required>
-                                        <option value="">Select Type</option>
-                                        <option value="1:1" ${prefillData.type === '1:1' ? 'selected' : ''}>1:1</option>
-                                        <option value="Standup" ${prefillData.type === 'Standup' ? 'selected' : ''}>Standup</option>
-                                        <option value="Gemba" ${prefillData.type === 'Gemba' ? 'selected' : ''}>Gemba Walk</option>
-                                        <option value="Team Meeting" ${prefillData.type === 'Team Meeting' ? 'selected' : ''}>Team Meeting</option>
-                                        <option value="Supplier Call" ${prefillData.type === 'Supplier Call' ? 'selected' : ''}>Supplier Call</option>
-                                        <option value="Project Review" ${prefillData.type === 'Project Review' ? 'selected' : ''}>Project Review</option>
-                                        <option value="Problem Solving" ${prefillData.type === 'Problem Solving' ? 'selected' : ''}>Problem Solving</option>
-                                        <option value="Other" ${prefillData.type === 'Other' ? 'selected' : ''}>Other</option>
-                                    </select>
+                                    <input type="text" id="meetingType" class="form-control" required
+                                           list="typeList" value="${escapeHtml(prefillData.type || '')}"
+                                           placeholder="e.g. Team Meeting">
+                                    <datalist id="typeList">${buildDatalistOptions(getTypes())}</datalist>
                                 </div>
                             </div>
 
@@ -393,10 +510,14 @@
                             </div>
 
                             <div class="form-group">
-                                <label>Attendees (optional)</label>
-                                <input type="text" id="meetingAttendees" class="form-control"
-                                       placeholder="Comma-separated names"
-                                       value="${escapeHtml(prefillData.attendees || '')}">
+                                <label>Attendees</label>
+                                <div class="attendee-picker" id="attendeePicker">
+                                    <div class="attendee-tags" id="attendeeTagsList"></div>
+                                    <input type="text" id="attendeeInput" class="attendee-input"
+                                           placeholder="Search or type a name to add…" autocomplete="off">
+                                    <ul class="attendee-dropdown hidden" id="attendeeDropdown"></ul>
+                                </div>
+                                <small style="color:var(--muted);">Select from saved contacts or type a name to create one.</small>
                             </div>
 
                             <hr style="margin: 24px 0; border: none; border-top: 2px solid var(--border);">
@@ -454,6 +575,8 @@
         `;
 
         document.body.insertAdjacentHTML('beforeend', modalHtml);
+        // Init attendee picker after DOM insertion
+        setTimeout(() => initAttendeePicker(prefillData.attendeeIds || []), 0);
     }
 
     // Quick Capture for past meetings
@@ -557,15 +680,26 @@
             timestamp: new Date().toISOString()
         })) : [];
 
+        // Persist custom section/type values for future use
+        persistCustomValue(section, 'meetingSections', getDefaultSections);
+        persistCustomValue(type, 'meetingTypes', getDefaultTypes);
+
+        // Build attendee display string from selected IDs
+        const attendeeNames = _pickerSelectedIds
+            .map(id => typeof getContactName === 'function' ? getContactName(id) : id)
+            .join(', ');
+
         const meetingData = {
             id: id || generateId(),
             title,
             date,
             time: document.getElementById('meetingTime').value,
+            endTime: document.getElementById('meetingEndTime').value,
             section,
             type,
             location: document.getElementById('meetingLocation').value.trim(),
-            attendees: document.getElementById('meetingAttendees').value.trim(),
+            attendeeIds: [..._pickerSelectedIds],
+            attendees: attendeeNames,
             // Note sections
             keyTopics: document.getElementById('meetingKeyTopics').value.trim(),
             discussionNotes: document.getElementById('meetingDiscussionNotes').value.trim(),
@@ -669,7 +803,7 @@
                         <div>
                             <h2 style="margin-bottom: 4px;">${escapeHtml(meeting.title)}</h2>
                             <div style="font-size: 13px; color: var(--text-2);">
-                                ${formatDate(new Date(meeting.date))} ${meeting.time ? '• ' + meeting.time : ''} ${meeting.location ? '• ' + escapeHtml(meeting.location) : ''}
+                                ${formatDate(new Date(meeting.date))} ${meeting.time ? '• ' + meeting.time : ''}${meeting.endTime ? '–' + meeting.endTime : ''} ${meeting.location ? '• ' + escapeHtml(meeting.location) : ''}
                             </div>
                         </div>
                         <button class="modal-close" onclick="app.closeMeetingDetailModal()">&times;</button>
@@ -692,9 +826,9 @@
                                     <span class="status-badge">${escapeHtml(meeting.section)}</span>
                                 </div>
 
-                                ${meeting.attendees ? `
+                                ${getMeetingAttendeesDisplay(meeting) ? `
                                 <div style="margin-bottom: 16px;">
-                                    <strong>Attendees:</strong> ${escapeHtml(meeting.attendees)}
+                                    <strong>Attendees:</strong> ${escapeHtml(getMeetingAttendeesDisplay(meeting))}
                                 </div>
                                 ` : ''}
 
@@ -1162,6 +1296,9 @@
     }
 
     // Expose functions to app namespace
+    app.pickerSelect   = pickerSelect;
+    app.pickerAddNew   = pickerAddNew;
+    app.pickerRemove   = pickerRemove;
     app.showCreateMeetingModal = showCreateMeetingModal;
     app.showQuickCaptureMeetingModal = showQuickCaptureMeetingModal;
     app.closeMeetingModal = closeMeetingModal;

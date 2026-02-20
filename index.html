@@ -48,6 +48,9 @@
                 <span class="icon">🗓️</span> Meetings
                 <span class="nav-badge" id="meetingsTodayBadge">0</span>
             </a></li>
+            <li><a href="#" data-page="contacts" class="nav-link">
+                <span class="icon">👥</span> Contacts
+            </a></li>
             <li><a href="#" data-page="projects" class="nav-link">
                 <span class="icon">📋</span> Projects
             </a></li>
@@ -444,6 +447,15 @@
             <div id="meeting-timeline-view" class="hidden">
                 <div id="meeting-timeline"></div>
             </div>
+        </div>
+
+        <!-- Contacts Page -->
+        <div id="page-contacts" class="page">
+            <header class="page-header">
+                <h1>Contacts</h1>
+                <button class="btn btn-primary" onclick="showContactModal()">+ Add Contact</button>
+            </header>
+            <div id="contacts-list"></div>
         </div>
 
         <!-- Calendar Page -->
@@ -1203,6 +1215,7 @@
     <script src="js/settings-enhanced.js"></script>
     <script src="js/products.js"></script>
     <script src="js/areas.js"></script>
+    <script src="js/contacts.js"></script>
     <script src="js/calendar.js"></script>
 </body>
 </html>

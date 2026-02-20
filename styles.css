@@ -1254,6 +1254,223 @@ canvas {
     /* subtle indicator that day has events */
 }
 
+/* ── Contacts Page ── */
+.contacts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+}
+
+.contact-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    transition: box-shadow 0.2s;
+}
+
+.contact-card:hover {
+    box-shadow: 0 4px 12px var(--shadow);
+}
+
+.contact-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--accent-text, #0f161c);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.contact-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.contact-name {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+.contact-role {
+    font-size: 13px;
+    color: var(--text-2);
+    margin-bottom: 4px;
+}
+
+.contact-email {
+    font-size: 13px;
+    color: var(--accent);
+    text-decoration: none;
+    display: block;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.contact-email:hover { text-decoration: underline; }
+
+.contact-phone {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 4px;
+}
+
+.contact-notes {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 4px;
+}
+
+.contact-meeting-badge {
+    display: inline-block;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: var(--accent-light);
+    color: var(--accent);
+    margin-top: 6px;
+}
+
+.contact-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+/* ── Attendee Picker ── */
+.attendee-picker {
+    position: relative;
+    border: 1px solid var(--border-2);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    padding: 6px 8px;
+    cursor: text;
+    min-height: 40px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: flex-start;
+}
+
+.attendee-picker:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(172,255,36,0.15);
+}
+
+.attendee-tags {
+    display: contents;
+}
+
+.attendee-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--accent-light);
+    color: var(--accent);
+    border-radius: 12px;
+    padding: 3px 10px 3px 10px;
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.attendee-tag-remove {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--accent);
+    font-size: 14px;
+    line-height: 1;
+    padding: 0 0 0 2px;
+    opacity: 0.7;
+}
+
+.attendee-tag-remove:hover { opacity: 1; }
+
+.attendee-input {
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--text);
+    font-size: 14px;
+    flex: 1;
+    min-width: 140px;
+    padding: 3px 2px;
+}
+
+.attendee-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    background: var(--surface);
+    border: 1px solid var(--border-2);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 4px 16px var(--shadow-lg);
+    list-style: none;
+    margin: 0;
+    padding: 4px 0;
+    z-index: 1200;
+    max-height: 240px;
+    overflow-y: auto;
+}
+
+.attendee-dropdown.hidden { display: none; }
+
+.attendee-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 14px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: background 0.15s;
+}
+
+.attendee-option:hover {
+    background: var(--surface-2);
+}
+
+.attendee-option-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--accent-text, #0f161c);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.attendee-option-new {
+    color: var(--accent);
+    border-top: 1px solid var(--border);
+    margin-top: 4px;
+    padding-top: 8px;
+}
+
+.attendee-option-empty {
+    padding: 10px 14px;
+    color: var(--muted);
+    font-size: 13px;
+    font-style: italic;
+}
+
 /* Kanban */
 .kanban-tabs {
     display: flex;
