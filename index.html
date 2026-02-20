@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="saronic">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced CI Tracker - Issue & Meeting Management</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Toast Notifications -->
+    <div id="toast-container"></div>
+
+    <!-- Top Bar with Global Search -->
+    <header id="top-bar" class="top-bar">
+        <div class="top-bar-left">
+            <div class="global-search-container">
+                <input
+                    type="text"
+                    id="globalSearch"
+                    class="global-search-input"
+                    placeholder="Search issues, projects, meetings, AAR... (Ctrl+K)"
+                    autocomplete="off"
+                >
+                <div id="globalSearchResults" class="global-search-results hidden"></div>
+            </div>
+        </div>
+        <div class="top-bar-right">
+            <button id="quickCreateIssueBtn" class="btn-icon" title="Quick Create Issue (N)" onclick="quickCreateIssue()">+ Issue</button>
+            <button id="quickCreateMeetingBtn" class="btn-icon" title="Quick Create Meeting (M)" onclick="quickCreateMeeting()">+ Meeting</button>
+            <span id="currentUser" class="current-user"></span>
+        </div>
+    </header>
+
+    <!-- Sidebar Navigation -->
+    <nav id="sidebar">
+        <div class="sidebar-header">
+            <h2>CI Tracker</h2>
+        </div>
+        <ul class="nav-menu">
+            <li><a href="#" data-page="dashboard" class="nav-link active">
+                <span class="icon">📊</span> Dashboard
+            </a></li>
+            <li><a href="#" data-page="issues" class="nav-link">
+                <span class="icon">🎯</span> Issues
+                <span class="nav-badge" id="issuesNewBadge">0</span>
+            </a></li>
+            <li><a href="#" data-page="meetings" class="nav-link">
+                <span class="icon">🗓️</span> Meetings
+                <span class="nav-badge" id="meetingsTodayBadge">0</span>
+            </a></li>
+            <li><a href="#" data-page="projects" class="nav-link">
+                <span class="icon">📋</span> Projects
+            </a></li>
+            <li><a href="#" data-page="dmaic" class="nav-link">
+                <span class="icon">🔄</span> DMAIC
+            </a></li>
+            <li><a href="#" data-page="aar" class="nav-link">
+                <span class="icon">📝</span> After Action Reports
+            </a></li>
+            <li><a href="#" data-page="kpis" class="nav-link">
+                <span class="icon">📈</span> KPIs
+            </a></li>
+            <li><a href="#" data-page="process" class="nav-link">
+                <span class="icon">📚</span> Process Library
+            </a></li>
+            <li><a href="#" data-page="calendar" class="nav-link">
+                <span class="icon">📅</span> Calendar
+            </a></li>
+            <li><a href="#" data-page="kanban" class="nav-link">
+                <span class="icon">🎯</span> Kanban
+            </a></li>
+            <li><a href="#" data-page="products" class="nav-link">
+                <span class="icon">🏭</span> Products
+            </a></li>
+            <li><a href="#" data-page="areas" class="nav-link">
+                <span class="icon">🗂️</span> SC Areas
+            </a></li>
+            <li><a href="#" data-page="settings" class="nav-link">
+                <span class="icon">⚙️</span> Settings
+            </a></li>
+            <li><a href="#" data-page="help" class="nav-link">
+                <span class="icon">❓</span> Help & Guide
+            </a></li>
+        </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <main id="main-content">
+        <!-- Dashboard Page -->
+        <div id="page-dashboard" class="page active">
+            <header class="page-header">
+                <h1>Command Center</h1>
+                <p class="page-subtitle">Your operational overview</p>
+            </header>
+
+            <div class="dashboard-grid">
+                <!-- This Week - Requires Action -->
+                <section class="card full-width">
+                    <h2>⚡ This Week - Requires Action</h2>
+                    <div class="dashboard-grid-3">
+                        <div class="dashboard-subcard card-alert">
+                            <h4>Overdue Actions</h4>
+                            <div id="overdueActionsWidget"></div>
+                        </div>
+                        <div class="dashboard-subcard card-warning">
+                            <h4>Issues Needing Triage</h4>
+                            <div id="issuesTriageWidget"></div>
+                        </div>
+                        <div class="dashboard-subcard card-info">
+                            <h4>Upcoming Follow-ups</h4>
+                            <div id="upcomingFollowupsWidget"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Current State Counts -->
+                <section class="card full-width">
+                    <h2>📊 Current State</h2>
+                    <div class="dashboard-grid-4">
+                        <div class="dashboard-subcard">
+                            <h4>Issues by Status</h4>
+                            <div id="issuesStatusWidget"></div>
+                        </div>
+                        <div class="dashboard-subcard">
+                            <h4>Issues by Severity</h4>
+                            <div id="issuesSeverityWidget"></div>
+                        </div>
+                        <div class="dashboard-subcard">
+                            <h4>Projects by Stage</h4>
+                            <div id="projectsStageWidget"></div>
+                        </div>
+                        <div class="dashboard-subcard">
+                            <h4>Project Health</h4>
+                            <div id="projectsHealthWidget"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- KPI Summary -->
+                <section class="card full-width">
+                    <h2>Key Performance Indicators</h2>
+                    <div id="kpi-summary" class="kpi-grid"></div>
+                </section>
+
+                <!-- Root Cause Pareto -->
+                <section class="card full-width">
+                    <h2>🎯 Root Cause Analysis (Issues + AAR)</h2>
+                    <div id="pareto-chart"></div>
+                </section>
+
+                <!-- Recent Activity Feed -->
+                <section class="card full-width">
+                    <h2>📋 Recent Activity</h2>
+                    <div id="recentActivityWidget" class="activity-feed"></div>
+                </section>
+            </div>
+        </div>
+
+        <!-- ISSUES PAGE -->
+        <div id="page-issues" class="page">
+            <header class="page-header">
+                <h1>Issues</h1>
+                <button class="btn btn-primary" onclick="app.showCreateIssueModal()">+ New Issue</button>
+            </header>
+
+            <!-- Triage Panel -->
+            <div id="triagePanel" class="triage-panel card"></div>
+
+            <!-- Filters -->
+            <div class="filters-bar">
+                <input type="text" id="issue-search" placeholder="Search issues..." class="search-input">
+                <select id="issue-section-filter" class="filter-select">
+                    <option value="">All Sections</option>
+                    <option value="Electrical">Electrical</option>
+                    <option value="Mechanical">Mechanical</option>
+                    <option value="Procurement">Procurement</option>
+                    <option value="Manufacturing">Manufacturing</option>
+                    <option value="Warehouse">Warehouse</option>
+                    <option value="Quality">Quality</option>
+                    <option value="Planning">Planning</option>
+                    <option value="Other">Other</option>
+                </select>
+                <select id="issue-status-filter" class="filter-select">
+                    <option value="">All Status</option>
+                    <option value="New">New</option>
+                    <option value="Triaged">Triaged</option>
+                    <option value="Investigating">Investigating</option>
+                    <option value="In DMAIC">In DMAIC</option>
+                    <option value="Monitoring">Monitoring</option>
+                    <option value="Closed">Closed</option>
+                </select>
+                <select id="issue-severity-filter" class="filter-select">
+                    <option value="">All Severity</option>
+                    <option value="Critical">Critical</option>
+                    <option value="High">High</option>
+                    <option value="Med">Med</option>
+                    <option value="Low">Low</option>
+                </select>
+                <select id="issue-type-filter" class="filter-select">
+                    <option value="">All Types</option>
+                    <option value="Shortage">Shortage</option>
+                    <option value="Late supplier">Late supplier</option>
+                    <option value="Quality escape">Quality escape</option>
+                    <option value="Process waste">Process waste</option>
+                    <option value="Safety risk">Safety risk</option>
+                    <option value="Cost overrun">Cost overrun</option>
+                    <option value="Scheduling conflict">Scheduling conflict</option>
+                    <option value="Other">Other</option>
+                </select>
+                <select id="issue-owner-filter" class="filter-select">
+                    <option value="">All Owners</option>
+                </select>
+                <select id="issue-product-filter" class="filter-select">
+                    <option value="">All Products</option>
+                </select>
+                <button class="btn btn-secondary" onclick="app.clearIssueFilters()">Clear Filters</button>
+            </div>
+
+            <!-- Issues List -->
+            <div id="issue-list" class="issue-list"></div>
+        </div>
+
+        <!-- KPIs Page -->
+        <div id="page-kpis" class="page">
+            <header class="page-header">
+                <h1>KPIs</h1>
+                <button class="btn btn-primary" onclick="app.showCreateKPIModal()">+ Add KPI</button>
+            </header>
+
+            <div class="filters-bar">
+                <input type="text" id="kpi-search" placeholder="Search KPIs..." class="search-input">
+                <select id="kpi-category-filter" class="filter-select">
+                    <option value="">All Categories</option>
+                    <option value="Service">Service</option>
+                    <option value="Flow">Flow</option>
+                    <option value="Stability">Stability</option>
+                    <option value="Cost">Cost</option>
+                    <option value="Quality">Quality</option>
+                </select>
+            </div>
+
+            <div id="kpi-list" class="kpi-list"></div>
+        </div>
+
+        <!-- Projects Page -->
+        <div id="page-projects" class="page">
+            <header class="page-header">
+                <h1>Projects Backlog</h1>
+                <button class="btn btn-primary" onclick="app.showCreateProjectModal()">+ Create Project</button>
+            </header>
+
+            <div class="filters-bar">
+                <input type="text" id="project-search" placeholder="Search projects..." class="search-input">
+                <select id="project-area-filter" class="filter-select">
+                    <option value="">All Areas</option>
+                    <option value="Planning">Planning</option>
+                    <option value="Buying">Buying</option>
+                    <option value="Receiving">Receiving</option>
+                    <option value="Warehouse">Warehouse</option>
+                    <option value="Logistics">Logistics</option>
+                    <option value="Supplier Quality">Supplier Quality</option>
+                    <option value="Scheduling">Scheduling</option>
+                    <option value="Other">Other</option>
+                </select>
+                <select id="project-status-filter" class="filter-select">
+                    <option value="">All Statuses</option>
+                    <option value="New">New</option>
+                    <option value="Define">Define</option>
+                    <option value="Measure">Measure</option>
+                    <option value="Analyze">Analyze</option>
+                    <option value="Improve">Improve</option>
+                    <option value="Control">Control</option>
+                    <option value="Closed">Closed</option>
+                </select>
+                <select id="project-health-filter" class="filter-select">
+                    <option value="">All Health</option>
+                    <option value="On Track">On Track</option>
+                    <option value="At Risk">At Risk</option>
+                    <option value="Off Track">Off Track</option>
+                </select>
+                <select id="project-product-filter" class="filter-select">
+                    <option value="">All Products</option>
+                </select>
+            </div>
+
+            <div id="project-list" class="project-list"></div>
+        </div>
+
+        <!-- DMAIC Page -->
+        <div id="page-dmaic" class="page">
+            <header class="page-header">
+                <h1>DMAIC Details</h1>
+            </header>
+
+            <div class="dmaic-selector">
+                <label>Select Project:</label>
+                <select id="dmaic-project-select" onchange="app.loadDMAICForProject()"></select>
+            </div>
+
+            <div id="dmaic-content" class="dmaic-tabs-container">
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="define">Define</button>
+                    <button class="tab-btn" data-tab="measure">Measure</button>
+                    <button class="tab-btn" data-tab="analyze">Analyze</button>
+                    <button class="tab-btn" data-tab="improve">Improve</button>
+                    <button class="tab-btn" data-tab="control">Control</button>
+                </div>
+
+                <div id="dmaic-tab-content" class="tab-content"></div>
+
+                <div class="dmaic-actions">
+                    <button class="btn btn-secondary" onclick="app.generateDMAICSummary()">Generate Summary</button>
+                    <button class="btn btn-primary" onclick="app.saveDMAIC()">Save DMAIC</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- AAR Page -->
+        <div id="page-aar" class="page">
+            <header class="page-header">
+                <h1>After Action Reports</h1>
+                <button class="btn btn-primary" onclick="app.showCreateAARModal()">+ Create AAR</button>
+            </header>
+
+            <div class="filters-bar">
+                <input type="text" id="aar-search" placeholder="Search AARs..." class="search-input">
+                <select id="aar-area-filter" class="filter-select">
+                    <option value="">All Areas</option>
+                    <option value="Planning">Planning</option>
+                    <option value="Buying">Buying</option>
+                    <option value="Receiving">Receiving</option>
+                    <option value="Warehouse">Warehouse</option>
+                    <option value="Logistics">Logistics</option>
+                    <option value="Supplier Quality">Supplier Quality</option>
+                    <option value="Scheduling">Scheduling</option>
+                    <option value="Other">Other</option>
+                </select>
+                <select id="aar-type-filter" class="filter-select">
+                    <option value="">All Types</option>
+                    <option value="Expedite">Expedite</option>
+                    <option value="Shortage">Shortage</option>
+                    <option value="Line stop">Line stop</option>
+                    <option value="Late supplier">Late supplier</option>
+                    <option value="Quality hold">Quality hold</option>
+                    <option value="Inventory error">Inventory error</option>
+                    <option value="Other">Other</option>
+                </select>
+                <select id="aar-status-filter" class="filter-select">
+                    <option value="">All Status</option>
+                    <option value="Open">Open</option>
+                    <option value="Closed">Closed</option>
+                </select>
+            </div>
+
+            <div class="aar-summary">
+                <div class="summary-stat">
+                    <label>Total Cost Impact:</label>
+                    <span id="aar-total-cost">$0</span>
+                </div>
+                <div class="summary-stat">
+                    <label>Total Time Impact:</label>
+                    <span id="aar-total-hours">0 hrs</span>
+                </div>
+            </div>
+
+            <div id="aar-list" class="aar-list"></div>
+        </div>
+
+        <!-- Process Library Page -->
+        <div id="page-process" class="page">
+            <header class="page-header">
+                <h1>Process Library</h1>
+                <button class="btn btn-primary" onclick="app.showCreateProcessModal()">+ Add Process</button>
+            </header>
+
+            <div class="filters-bar">
+                <input type="text" id="process-search" placeholder="Search processes..." class="search-input">
+                <select id="process-area-filter" class="filter-select">
+                    <option value="">All Areas</option>
+                    <option value="Planning">Planning</option>
+                    <option value="Buying">Buying</option>
+                    <option value="Receiving">Receiving</option>
+                    <option value="Warehouse">Warehouse</option>
+                    <option value="Logistics">Logistics</option>
+                    <option value="Supplier Quality">Supplier Quality</option>
+                    <option value="Scheduling">Scheduling</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+
+            <div id="process-list" class="process-list"></div>
+        </div>
+
+        <!-- Meetings Page -->
+        <div id="page-meetings" class="page">
+            <header class="page-header">
+                <h1>Meetings</h1>
+                <button class="btn btn-primary" onclick="app.showCreateMeetingModal()">+ New Meeting</button>
+                <button class="btn btn-secondary" onclick="app.showQuickCaptureMeetingModal()">⚡ Quick Capture</button>
+            </header>
+
+            <!-- View Toggle -->
+            <div class="view-toggle">
+                <button class="btn btn-toggle active" data-view="list" onclick="app.switchMeetingView('list')">List</button>
+                <button class="btn btn-toggle" data-view="timeline" onclick="app.switchMeetingView('timeline')">Timeline</button>
+            </div>
+
+            <!-- Filters -->
+            <div class="filters-bar">
+                <input type="text" id="meeting-search" placeholder="Search meetings..." class="search-input">
+                <select id="meeting-section-filter" class="filter-select">
+                    <option value="">All Sections</option>
+                    <option value="Electrical">Electrical</option>
+                    <option value="Mechanical">Mechanical</option>
+                    <option value="Procurement">Procurement</option>
+                    <option value="Manufacturing">Manufacturing</option>
+                    <option value="Warehouse">Warehouse</option>
+                    <option value="Quality">Quality</option>
+                    <option value="Planning">Planning</option>
+                    <option value="Leadership">Leadership</option>
+                    <option value="Other">Other</option>
+                </select>
+                <select id="meeting-type-filter" class="filter-select">
+                    <option value="">All Types</option>
+                    <option value="1:1">1:1</option>
+                    <option value="Standup">Standup</option>
+                    <option value="Gemba">Gemba</option>
+                    <option value="Supplier Call">Supplier Call</option>
+                    <option value="Project Review">Project Review</option>
+                    <option value="Problem Solving">Problem Solving</option>
+                    <option value="Other">Other</option>
+                </select>
+                <input type="date" id="meeting-date-from" class="filter-input" placeholder="From">
+                <input type="date" id="meeting-date-to" class="filter-input" placeholder="To">
+                <button class="btn btn-secondary" onclick="app.clearMeetingFilters()">Clear Filters</button>
+            </div>
+
+            <!-- Meeting List View -->
+            <div id="meeting-list-view">
+                <div id="meeting-list"></div>
+            </div>
+
+            <!-- Meeting Timeline View -->
+            <div id="meeting-timeline-view" class="hidden">
+                <div id="meeting-timeline"></div>
+            </div>
+        </div>
+
+        <!-- Calendar Page -->
+        <div id="page-calendar" class="page">
+            <header class="page-header">
+                <h1>Calendar</h1>
+            </header>
+
+            <div class="calendar-filters">
+                <div class="calendar-filter-group">
+                    <label><input type="checkbox" id="filter-projects" checked> Projects</label>
+                    <label><input type="checkbox" id="filter-actions" checked> Actions</label>
+                    <label><input type="checkbox" id="filter-aar" checked> AAR</label>
+                    <label><input type="checkbox" id="filter-meetings" checked> Meetings</label>
+                    <label><input type="checkbox" id="filter-process" checked> Process Reviews</label>
+                </div>
+                <select id="filter-calendar-area" class="filter-select">
+                    <option value="">All Areas</option>
+                    <option value="Planning">Planning</option>
+                    <option value="Buying">Buying</option>
+                    <option value="Receiving">Receiving</option>
+                    <option value="Warehouse">Warehouse</option>
+                    <option value="Logistics">Logistics</option>
+                    <option value="Supplier Quality">Supplier Quality</option>
+                    <option value="Scheduling">Scheduling</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+
+            <div class="calendar-container">
+                <div class="calendar-header">
+                    <button class="btn btn-secondary" onclick="app.prevMonth()">← Prev</button>
+                    <h2 id="calendar-month-title"></h2>
+                    <button class="btn btn-secondary" onclick="app.nextMonth()">Next →</button>
+                </div>
+                <div class="calendar-grid" id="calendar-grid"></div>
+            </div>
+
+            <div id="day-drawer" class="day-drawer">
+                <div class="day-drawer-header">
+                    <h3 id="day-drawer-title"></h3>
+                    <button class="btn btn-secondary btn-small" onclick="app.closeDayDrawer()">×</button>
+                </div>
+                <div class="day-drawer-body" id="day-drawer-body"></div>
+                <div class="day-drawer-actions">
+                    <button class="btn btn-secondary btn-small" onclick="app.quickAddMeeting()">+ Meeting</button>
+                    <button class="btn btn-secondary btn-small" onclick="app.quickAddAAR()">+ AAR</button>
+                    <button class="btn btn-secondary btn-small" onclick="app.quickAddAction()">+ Action</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Kanban Page -->
+        <div id="page-kanban" class="page">
+            <header class="page-header">
+                <h1>Kanban</h1>
+            </header>
+
+            <div class="kanban-tabs">
+                <button class="kanban-tab-btn active" data-tab="projects" onclick="app.switchKanbanTab('projects')">Projects Kanban</button>
+                <button class="kanban-tab-btn" data-tab="actions" onclick="app.switchKanbanTab('actions')">Actions Kanban</button>
+            </div>
+
+            <div class="kanban-filters">
+                <input type="text" id="kanban-search" placeholder="Search..." class="search-input">
+                <select id="kanban-area-filter" class="filter-select">
+                    <option value="">All Areas</option>
+                    <option value="Planning">Planning</option>
+                    <option value="Buying">Buying</option>
+                    <option value="Receiving">Receiving</option>
+                    <option value="Warehouse">Warehouse</option>
+                    <option value="Logistics">Logistics</option>
+                    <option value="Supplier Quality">Supplier Quality</option>
+                    <option value="Scheduling">Scheduling</option>
+                    <option value="Other">Other</option>
+                </select>
+                <select id="kanban-owner-filter" class="filter-select">
+                    <option value="">All Owners</option>
+                </select>
+                <select id="kanban-health-filter" class="filter-select" style="display: none;">
+                    <option value="">All Health</option>
+                    <option value="On Track">On Track</option>
+                    <option value="At Risk">At Risk</option>
+                    <option value="Off Track">Off Track</option>
+                </select>
+                <label style="display: flex; align-items: center; gap: 6px; margin-left: 12px;">
+                    <input type="checkbox" id="kanban-overdue-filter">
+                    Overdue Only
+                </label>
+            </div>
+
+            <div id="kanban-board" class="kanban-board"></div>
+        </div>
+
+        <!-- Products Page -->
+        <div id="page-products" class="page">
+            <header class="page-header">
+                <h1>Products</h1>
+                <button class="btn btn-primary" onclick="showCreateProductModal()">+ Add Product</button>
+            </header>
+            <p class="page-subtitle" style="padding: 0 0 16px 0; color: var(--gray-600);">
+                Manage your product list and track CI opportunities by product.
+            </p>
+            <div id="products-list" class="products-list"></div>
+        </div>
+
+        <!-- SC Areas Page -->
+        <div id="page-areas" class="page">
+            <header class="page-header">
+                <h1>Supply Chain Areas</h1>
+            </header>
+            <p class="page-subtitle" style="padding: 0 0 16px 0; color: var(--gray-600);">
+                Track improvements and CI activity across each supply chain area.
+            </p>
+            <div id="areas-grid" class="areas-grid"></div>
+        </div>
+
+        <!-- Settings Page -->
+        <div id="page-settings" class="page">
+            <header class="page-header">
+                <h1>Settings & Data Management</h1>
+            </header>
+
+            <section class="card">
+                <h2>User Profile</h2>
+                <div class="settings-row">
+                    <label>Display Name:</label>
+                    <input type="text" id="settingUserName" class="input-text" placeholder="Your Name">
+                    <button class="btn btn-primary" onclick="app.saveUserSettings()">Save</button>
+                </div>
+            </section>
+
+            <section class="card">
+                <h2>Data Export / Import</h2>
+                <div class="settings-actions">
+                    <button class="btn btn-secondary" onclick="app.exportData()">Export All Data (JSON)</button>
+                    <button class="btn btn-secondary" onclick="app.importDataPrompt()">Import Data from JSON</button>
+                    <input type="file" id="import-data-file" accept=".json" style="display: none;">
+                    <button class="btn btn-warning" onclick="app.loadDemoData()">Load Demo Data</button>
+                    <button class="btn btn-danger" onclick="app.clearAllData()">Clear All Data (Danger!)</button>
+                </div>
+            </section>
+
+            <section class="card">
+                <h2>Audit Log</h2>
+                <button class="btn btn-secondary" onclick="app.toggleAuditLogViewer()">View Audit Log</button>
+                <div id="auditLogViewer" class="audit-log-viewer hidden"></div>
+            </section>
+
+            <section class="card">
+                <h2>About</h2>
+                <p><strong>Advanced CI Tracker v2.0</strong></p>
+                <p>Meetings, Issue Tracking, DMAIC, AAR, VSM, and Process Management</p>
+                <p>All data stored locally in your browser's localStorage.</p>
+                <p>No external dependencies or backend required.</p>
+            </section>
+        </div>
+
+        <!-- Help & Guide Page -->
+        <div id="page-help" class="page">
+            <div class="help-layout">
+
+                <!-- Sticky Table of Contents -->
+                <aside class="help-toc">
+                    <div class="help-toc-inner">
+                        <h3 class="help-toc-title">Contents</h3>
+                        <nav class="help-toc-nav">
+                            <a href="#help-overview" class="help-toc-link">Overview</a>
+                            <a href="#help-nav" class="help-toc-link">Navigation</a>
+                            <a href="#help-shortcuts" class="help-toc-link">Keyboard Shortcuts</a>
+                            <a href="#help-dashboard" class="help-toc-link">Dashboard</a>
+                            <a href="#help-issues" class="help-toc-link">Issues</a>
+                            <a href="#help-projects" class="help-toc-link">Projects</a>
+                            <a href="#help-dmaic" class="help-toc-link">DMAIC</a>
+                            <a href="#help-kpis" class="help-toc-link">KPIs</a>
+                            <a href="#help-aar" class="help-toc-link">After Action Reports</a>
+                            <a href="#help-meetings" class="help-toc-link">Meetings</a>
+                            <a href="#help-products" class="help-toc-link">Products</a>
+                            <a href="#help-areas" class="help-toc-link">SC Areas</a>
+                            <a href="#help-process" class="help-toc-link">Process Library</a>
+                            <a href="#help-kanban" class="help-toc-link">Kanban</a>
+                            <a href="#help-workflows" class="help-toc-link">Workflows</a>
+                            <a href="#help-data" class="help-toc-link">Data Management</a>
+                        </nav>
+                    </div>
+                </aside>
+
+                <!-- Main Help Content -->
+                <article class="help-content">
+
+                    <!-- Hero -->
+                    <header class="help-hero">
+                        <h1 class="help-hero-title">CI Tracker — User Guide</h1>
+                        <p class="help-hero-sub">A supply chain continuous improvement tool for tracking issues, projects, KPIs, meetings, and improvements across your operation.</p>
+                    </header>
+
+                    <!-- Overview -->
+                    <section id="help-overview" class="help-section">
+                        <h2 class="help-section-title">Overview</h2>
+                        <p>CI Tracker is a single-page web app that runs entirely in your browser. All data is saved locally — no server, no login required. Use it to:</p>
+                        <ul class="help-list">
+                            <li>Capture and triage <strong>supply chain issues</strong> before they escalate</li>
+                            <li>Run <strong>DMAIC improvement projects</strong> from identification to control</li>
+                            <li>Track <strong>KPIs</strong> over time and link them to improvement projects</li>
+                            <li>Log <strong>meetings</strong> with notes, decisions, and action items</li>
+                            <li>Write <strong>After Action Reports</strong> so problems don't repeat</li>
+                            <li>Manage a <strong>product list</strong> and track CI activity per product</li>
+                            <li>Record <strong>improvements per supply chain area</strong> to build your history</li>
+                        </ul>
+                        <div class="help-callout help-callout-tip">
+                            <span class="help-callout-icon">💡</span>
+                            <div><strong>Quick Start:</strong> Press <kbd>N</kbd> anywhere to log a new issue. Press <kbd>M</kbd> to schedule a meeting. Use <kbd>Ctrl+K</kbd> (or <kbd>Cmd+K</kbd>) to search across everything.</div>
+                        </div>
+                    </section>
+
+                    <!-- Navigation -->
+                    <section id="help-nav" class="help-section">
+                        <h2 class="help-section-title">Navigation</h2>
+                        <p>Use the left sidebar to move between sections. Active page is highlighted. Badges on <strong>Issues</strong> and <strong>Meetings</strong> show counts of items needing attention.</p>
+
+                        <div class="help-nav-grid">
+                            <div class="help-nav-item">
+                                <span class="help-nav-icon">📊</span>
+                                <div>
+                                    <strong>Dashboard</strong>
+                                    <p>Command centre. Overdue actions, items needing triage, KPI summary, root cause Pareto chart, and recent activity.</p>
+                                </div>
+                            </div>
+                            <div class="help-nav-item">
+                                <span class="help-nav-icon">🎯</span>
+                                <div>
+                                    <strong>Issues</strong>
+                                    <p>Log and triage supply chain problems. Badge = unreviewed critical/high issues.</p>
+                                </div>
+                            </div>
+                            <div class="help-nav-item">
+                                <span class="help-nav-icon">🗓️</span>
+                                <div>
+                                    <strong>Meetings</strong>
+                                    <p>Schedule and record area meetings. Badge = meetings today.</p>
+                                </div>
+                            </div>
+                            <div class="help-nav-item">
+                                <span class="help-nav-icon">📋</span>
+                                <div>
+                                    <strong>Projects</strong>
+                                    <p>Manage CI improvement projects with health tracking, actions, and DMAIC phase.</p>
+                                </div>
+                            </div>
+                            <div class="help-nav-item">
+                                <span class="help-nav-icon">🔄</span>
+                                <div>
+                                    <strong>DMAIC</strong>
+                                    <p>Deep-dive into a project's Define → Measure → Analyze → Improve → Control work.</p>
+                                </div>
+                            </div>
+                            <div class="help-nav-item">
+                                <span class="help-nav-icon">📝</span>
+                                <div>
+                                    <strong>After Action Reports</strong>
+                                    <p>Document incidents with 5-Whys root cause and countermeasures.</p>
+                                </div>
+                            </div>
+                            <div class="help-nav-item">
+                                <span class="help-nav-icon">📈</span>
+                                <div>
+                                    <strong>KPIs</strong>
+                                    <p>Track metrics over time. Link KPIs to improvement projects.</p>
+                                </div>
+                            </div>
+                            <div class="help-nav-item">
+                                <span class="help-nav-icon">📚</span>
+                                <div>
+                                    <strong>Process Library</strong>
+                                    <p>Store standard work and process documentation by area.</p>
+                                </div>
+                            </div>
+                            <div class="help-nav-item">
+                                <span class="help-nav-icon">📅</span>
+                                <div>
+                                    <strong>Calendar</strong>
+                                    <p>Monthly view of meetings, project milestones, and action due dates.</p>
+                                </div>
+                            </div>
+                            <div class="help-nav-item">
+                                <span class="help-nav-icon">🎯</span>
+                                <div>
+                                    <strong>Kanban</strong>
+                                    <p>Board view of projects and actions. See everything by status at a glance.</p>
+                                </div>
+                            </div>
+                            <div class="help-nav-item">
+                                <span class="help-nav-icon">🏭</span>
+                                <div>
+                                    <strong>Products</strong>
+                                    <p>Manage your product/SKU list. See issue and project counts per product.</p>
+                                </div>
+                            </div>
+                            <div class="help-nav-item">
+                                <span class="help-nav-icon">🗂️</span>
+                                <div>
+                                    <strong>SC Areas</strong>
+                                    <p>Record improvements per supply chain area. Build a history of what's been done.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Keyboard Shortcuts -->
+                    <section id="help-shortcuts" class="help-section">
+                        <h2 class="help-section-title">Keyboard Shortcuts</h2>
+                        <p>Shortcuts work when you are not typing inside an input or text field.</p>
+                        <div class="help-shortcuts-grid">
+                            <div class="help-shortcut-card">
+                                <kbd>N</kbd>
+                                <span>New Issue</span>
+                            </div>
+                            <div class="help-shortcut-card">
+                                <kbd>M</kbd>
+                                <span>New Meeting</span>
+                            </div>
+                            <div class="help-shortcut-card">
+                                <kbd>Ctrl K</kbd>
+                                <span>Global Search</span>
+                            </div>
+                            <div class="help-shortcut-card">
+                                <kbd>Esc</kbd>
+                                <span>Close Modal</span>
+                            </div>
+                        </div>
+                        <div class="help-callout help-callout-info">
+                            <span class="help-callout-icon">🔍</span>
+                            <div>The <strong>Global Search</strong> bar (top of screen) searches across issues, projects, meetings, KPIs, and processes simultaneously. Results appear as you type.</div>
+                        </div>
+                    </section>
+
+                    <!-- Dashboard -->
+                    <section id="help-dashboard" class="help-section">
+                        <h2 class="help-section-title">Dashboard</h2>
+                        <p>The Dashboard is your daily starting point. It is divided into three zones:</p>
+
+                        <div class="help-table-wrap">
+                            <table class="help-table">
+                                <thead><tr><th>Zone</th><th>What it shows</th><th>Action</th></tr></thead>
+                                <tbody>
+                                    <tr>
+                                        <td><strong>⚡ This Week</strong></td>
+                                        <td>Overdue actions, issues needing triage, upcoming follow-ups due in 7 days</td>
+                                        <td>Click items to navigate directly to them</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>📊 Current State</strong></td>
+                                        <td>Issues by status, issues by severity, projects by DMAIC stage, project health breakdown</td>
+                                        <td>Glance view — no interaction required</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>📈 KPI Summary</strong></td>
+                                        <td>All KPIs with current value, target, and trend direction</td>
+                                        <td>Quick health check on all metrics</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>🎯 Root Cause Pareto</strong></td>
+                                        <td>Combined issue + AAR root causes ranked by frequency</td>
+                                        <td>Identify what to work on next</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>📋 Recent Activity</strong></td>
+                                        <td>Latest creates, updates, and closures across all record types</td>
+                                        <td>Catch up after time away</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <!-- Issues -->
+                    <section id="help-issues" class="help-section">
+                        <h2 class="help-section-title">Issues</h2>
+                        <p>An <strong>Issue</strong> is any supply chain problem, risk, or opportunity that needs attention. Issues are the entry point for most CI work — they can escalate into full DMAIC projects or be resolved quickly and documented as AARs.</p>
+
+                        <h3 class="help-sub-title">Creating an Issue</h3>
+                        <p>Click <strong>+ New Issue</strong> or press <kbd>N</kbd>. The required fields are:</p>
+                        <ul class="help-list">
+                            <li><strong>Title</strong> — a clear, specific description of the problem</li>
+                            <li><strong>Section / Category</strong> — the functional area (Electrical, Mechanical, Procurement, Manufacturing, Warehouse, Quality, Planning)</li>
+                            <li><strong>Severity</strong> — Low / Med / High / Critical</li>
+                            <li><strong>Type</strong> — Shortage, Late supplier, Quality escape, Process waste, Safety risk, Cost overrun, Scheduling conflict</li>
+                        </ul>
+                        <p>Optional but valuable fields include impact (cost $, time hours, units, schedule days), root cause category, owner, next action, and linked products.</p>
+
+                        <h3 class="help-sub-title">Issue Lifecycle</h3>
+                        <div class="help-lifecycle">
+                            <div class="help-lifecycle-step">
+                                <div class="help-lifecycle-dot help-lifecycle-new"></div>
+                                <div><strong>New</strong><br>Just logged. Needs review.</div>
+                            </div>
+                            <div class="help-lifecycle-arrow">→</div>
+                            <div class="help-lifecycle-step">
+                                <div class="help-lifecycle-dot help-lifecycle-triaged"></div>
+                                <div><strong>Triaged</strong><br>Reviewed. Owner assigned.</div>
+                            </div>
+                            <div class="help-lifecycle-arrow">→</div>
+                            <div class="help-lifecycle-step">
+                                <div class="help-lifecycle-dot help-lifecycle-investigating"></div>
+                                <div><strong>Investigating</strong><br>Root cause work underway.</div>
+                            </div>
+                            <div class="help-lifecycle-arrow">→</div>
+                            <div class="help-lifecycle-step">
+                                <div class="help-lifecycle-dot help-lifecycle-dmaic"></div>
+                                <div><strong>In DMAIC</strong><br>Escalated to project.</div>
+                            </div>
+                            <div class="help-lifecycle-arrow">→</div>
+                            <div class="help-lifecycle-step">
+                                <div class="help-lifecycle-dot help-lifecycle-monitoring"></div>
+                                <div><strong>Monitoring</strong><br>Fix in place, watching.</div>
+                            </div>
+                            <div class="help-lifecycle-arrow">→</div>
+                            <div class="help-lifecycle-step">
+                                <div class="help-lifecycle-dot help-lifecycle-closed"></div>
+                                <div><strong>Closed</strong><br>Resolved and documented.</div>
+                            </div>
+                        </div>
+
+                        <h3 class="help-sub-title">Triage Panel</h3>
+                        <p>The yellow panel at the top of the Issues page surfaces issues with overdue or upcoming next actions that need your attention right now — it updates automatically.</p>
+
+                        <h3 class="help-sub-title">Filters</h3>
+                        <p>Filter by: Section, Status, Severity, Type, Owner, Product. Use the search box to find by keyword. Click <strong>Clear Filters</strong> to reset.</p>
+                    </section>
+
+                    <!-- Projects -->
+                    <section id="help-projects" class="help-section">
+                        <h2 class="help-section-title">Projects</h2>
+                        <p>A <strong>Project</strong> is a structured CI initiative — typically a formal DMAIC improvement. Projects are connected to KPIs, products, and issues.</p>
+
+                        <h3 class="help-sub-title">Creating a Project</h3>
+                        <p>Click <strong>+ Create Project</strong>. Fill in title, supply chain area, problem statement, owner, dates, and priority. You can also link KPIs that this project should move and products affected.</p>
+
+                        <h3 class="help-sub-title">Project Health</h3>
+                        <div class="help-badge-row">
+                            <span class="health-badge health-on-track">On Track</span> Project is progressing to plan.
+                            <span class="health-badge health-at-risk" style="margin-left:12px;">At Risk</span> Delays or blockers exist.
+                            <span class="health-badge health-off-track" style="margin-left:12px;">Off Track</span> Significant issues — escalate.
+                        </div>
+
+                        <h3 class="help-sub-title">Actions</h3>
+                        <p>Each project has a list of <strong>Actions</strong> (tasks). Each action has an owner, due date, and status (Open / Done / Blocked). Overdue actions appear on the Dashboard.</p>
+
+                        <h3 class="help-sub-title">DMAIC Phases</h3>
+                        <p>A project's current phase (Define → Measure → Analyze → Improve → Control → Closed) shows on the card. Use the <strong>DMAIC page</strong> to fill in structured content for each phase.</p>
+                    </section>
+
+                    <!-- DMAIC -->
+                    <section id="help-dmaic" class="help-section">
+                        <h2 class="help-section-title">DMAIC</h2>
+                        <p>The DMAIC page provides a structured workspace for each phase of an improvement project. Select a project from the dropdown, then navigate the tabs.</p>
+
+                        <div class="help-table-wrap">
+                            <table class="help-table">
+                                <thead><tr><th>Phase</th><th>What to fill in</th></tr></thead>
+                                <tbody>
+                                    <tr><td><strong>Define</strong></td><td>Problem statement, goal, scope in/out, customers, constraints</td></tr>
+                                    <tr><td><strong>Measure</strong></td><td>Baseline metrics, data sources, measurement plan</td></tr>
+                                    <tr><td><strong>Analyze</strong></td><td>Root causes, fishbone notes, Pareto findings</td></tr>
+                                    <tr><td><strong>Improve</strong></td><td>Countermeasures, pilot plan, implementation plan, risk assessment</td></tr>
+                                    <tr><td><strong>Control</strong></td><td>Control plan, standard work, audit cadence, sustainment checks</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p style="margin-top:12px;">Click <strong>Generate Summary</strong> to create a shareable text summary of all five phases. Click <strong>Save DMAIC</strong> to persist your work.</p>
+                    </section>
+
+                    <!-- KPIs -->
+                    <section id="help-kpis" class="help-section">
+                        <h2 class="help-section-title">KPIs</h2>
+                        <p>Track operational metrics over time and connect them to improvement projects so you can show the impact of your work.</p>
+
+                        <h3 class="help-sub-title">Creating a KPI</h3>
+                        <p>Click <strong>+ Add KPI</strong>. Set a name, category, target value, unit (%, $, count, turns…), and measurement cadence (Weekly / Monthly).</p>
+
+                        <h3 class="help-sub-title">Categories</h3>
+                        <div class="help-badge-row" style="flex-wrap:wrap; gap:8px;">
+                            <span class="status-badge">Service</span>
+                            <span class="status-badge">Flow</span>
+                            <span class="status-badge">Stability</span>
+                            <span class="status-badge">Cost</span>
+                            <span class="status-badge">Quality</span>
+                        </div>
+
+                        <h3 class="help-sub-title">Adding Data Points</h3>
+                        <p>Click on any KPI card to open its detail view. Enter a date, value, and optional note. The trend indicator (↑ ↓ →) updates automatically based on the last two data points.</p>
+
+                        <h3 class="help-sub-title">Linking to Projects</h3>
+                        <p>When creating or editing a project, use the <em>Impacted KPIs</em> multi-select to link which KPIs the project is trying to move. This creates a clear line from effort to outcome.</p>
+                    </section>
+
+                    <!-- AAR -->
+                    <section id="help-aar" class="help-section">
+                        <h2 class="help-section-title">After Action Reports (AAR)</h2>
+                        <p>An AAR documents a supply chain incident — what happened, why it happened, and what will prevent it from happening again. They are permanent records that build organisational memory.</p>
+
+                        <h3 class="help-sub-title">When to write an AAR</h3>
+                        <ul class="help-list">
+                            <li>After any expedite or premium freight event</li>
+                            <li>After a line stop or production delay caused by supply chain</li>
+                            <li>After a supplier quality escape reaches production</li>
+                            <li>After any significant inventory error</li>
+                            <li>When closing a DMAIC project</li>
+                        </ul>
+
+                        <h3 class="help-sub-title">5-Whys Structure</h3>
+                        <p>Each AAR includes five "Why" fields to guide root cause analysis. Start with the visible symptom and keep asking why until you reach the systemic root cause — usually around Why 4 or Why 5.</p>
+
+                        <h3 class="help-sub-title">Impact Tracking</h3>
+                        <p>Record cost (USD), time (hours), and units affected. These roll up to the AAR summary totals at the top of the page, giving a running total of the cost of poor quality/performance.</p>
+                    </section>
+
+                    <!-- Meetings -->
+                    <section id="help-meetings" class="help-section">
+                        <h2 class="help-section-title">Meetings</h2>
+                        <p>Record every supply chain meeting — standups, Gembas, supplier calls, project reviews, 1:1s. The cadence tracker shows which areas are keeping up with their meeting rhythm.</p>
+
+                        <h3 class="help-sub-title">Meeting Types</h3>
+                        <div class="help-badge-row" style="flex-wrap:wrap; gap:8px;">
+                            <span class="status-badge">1:1</span>
+                            <span class="status-badge">Standup</span>
+                            <span class="status-badge">Gemba</span>
+                            <span class="status-badge">Supplier Call</span>
+                            <span class="status-badge">Project Review</span>
+                            <span class="status-badge">Problem Solving</span>
+                        </div>
+
+                        <h3 class="help-sub-title">Quick Capture</h3>
+                        <p>Use the <strong>⚡ Quick Capture</strong> button to log a meeting with minimal friction — just the area, date, and key points. Great for Gemba walk notes.</p>
+
+                        <h3 class="help-sub-title">Views</h3>
+                        <p>Switch between <strong>List</strong> (newest first) and <strong>Timeline</strong> views. The Timeline groups meetings chronologically and is useful for reviewing a period of activity.</p>
+                    </section>
+
+                    <!-- Products -->
+                    <section id="help-products" class="help-section">
+                        <h2 class="help-section-title">Products</h2>
+                        <p>The Products page is your product/SKU master list. Once products are added here, you can link them to Issues and Projects so you can answer the question: <em>"What CI work is happening for Product X?"</em></p>
+
+                        <h3 class="help-sub-title">Adding Products</h3>
+                        <p>Click <strong>+ Add Product</strong>. Enter a name (required), optional product code/SKU, and description. Keep names consistent — these appear as filter options throughout the app.</p>
+
+                        <h3 class="help-sub-title">Product Cards</h3>
+                        <p>Each product card shows counts of open issues, active projects, and closed CI items. Use the <strong>View Issues</strong> and <strong>View Projects</strong> buttons to jump to a pre-filtered view.</p>
+
+                        <div class="help-callout help-callout-tip">
+                            <span class="help-callout-icon">💡</span>
+                            <div>Add all your key products first, then link them as you create issues and projects. This unlocks the product filter on both pages.</div>
+                        </div>
+                    </section>
+
+                    <!-- SC Areas -->
+                    <section id="help-areas" class="help-section">
+                        <h2 class="help-section-title">Supply Chain Areas</h2>
+                        <p>The SC Areas page gives each supply chain function its own improvement log. Record every kaizen event, process change, or standard work update — so your team builds a clear picture of what has been improved and when.</p>
+
+                        <h3 class="help-sub-title">The Seven Areas</h3>
+                        <div class="help-areas-grid">
+                            <div class="help-area-item"><span>📅</span><strong>Planning</strong><p>Demand forecasting, replenishment, parameter management</p></div>
+                            <div class="help-area-item"><span>🛒</span><strong>Buying</strong><p>Supplier management, PO processing, lead time negotiation</p></div>
+                            <div class="help-area-item"><span>📦</span><strong>Receiving</strong><p>Dock management, incoming inspection, putaway accuracy</p></div>
+                            <div class="help-area-item"><span>🏪</span><strong>Warehouse</strong><p>Inventory accuracy, picking, 5S, space utilisation</p></div>
+                            <div class="help-area-item"><span>🚚</span><strong>Logistics</strong><p>Inbound/outbound transport, carrier performance, cost</p></div>
+                            <div class="help-area-item"><span>✅</span><strong>Supplier Quality</strong><p>Incoming QA, scorecards, defect tracking, corrective actions</p></div>
+                            <div class="help-area-item"><span>🗓️</span><strong>Scheduling</strong><p>Production schedule adherence, capacity, sequencing</p></div>
+                        </div>
+
+                        <h3 class="help-sub-title">Recording an Improvement</h3>
+                        <p>Click <strong>+ Improvement</strong> on any area card. Choose a type, set the status (Planned / In Progress / Implemented), add a description and — importantly — record the <strong>impact or result</strong>. This is what builds your improvement story over time.</p>
+
+                        <h3 class="help-sub-title">Improvement Types</h3>
+                        <div class="help-badge-row" style="flex-wrap:wrap; gap:8px;">
+                            <span class="status-badge">Process Improvement</span>
+                            <span class="status-badge">Kaizen</span>
+                            <span class="status-badge">Error-proofing</span>
+                            <span class="status-badge">Standard Work</span>
+                            <span class="status-badge">Training</span>
+                            <span class="status-badge">5S / Visual Management</span>
+                            <span class="status-badge">Automation</span>
+                            <span class="status-badge">Supplier Development</span>
+                        </div>
+                    </section>
+
+                    <!-- Process Library -->
+                    <section id="help-process" class="help-section">
+                        <h2 class="help-section-title">Process Library</h2>
+                        <p>Store your standard operating procedures and process documentation here. Each document includes:</p>
+                        <ul class="help-list">
+                            <li>Process name, area, purpose, and owner</li>
+                            <li>Inputs, outputs, and cross-functional partners</li>
+                            <li>Step-by-step process steps (reorder with up/down arrows)</li>
+                            <li>Failure modes and their mitigations</li>
+                            <li>Last reviewed date — the app warns when a document is 90+ days overdue for review</li>
+                        </ul>
+                        <div class="help-callout help-callout-warning">
+                            <span class="help-callout-icon">⚠️</span>
+                            <div>Process documents that have not been reviewed in over 90 days are flagged. Use the <strong>Mark Reviewed</strong> button after each review.</div>
+                        </div>
+                    </section>
+
+                    <!-- Kanban -->
+                    <section id="help-kanban" class="help-section">
+                        <h2 class="help-section-title">Kanban</h2>
+                        <p>The Kanban page shows a visual board with columns for each status. Use it when you want to see the full picture at a glance and spot bottlenecks.</p>
+                        <p>Switch between <strong>Projects Kanban</strong> and <strong>Actions Kanban</strong> using the tabs at the top. Filter by area, owner, or health — or tick <em>Overdue Only</em> to focus on what needs immediate attention.</p>
+                    </section>
+
+                    <!-- Workflows -->
+                    <section id="help-workflows" class="help-section">
+                        <h2 class="help-section-title">Common Workflows</h2>
+
+                        <h3 class="help-sub-title">Issue → DMAIC Project → AAR</h3>
+                        <div class="help-workflow">
+                            <div class="help-workflow-step">
+                                <div class="help-workflow-num">1</div>
+                                <div><strong>Log the Issue</strong><br>Capture the problem in Issues with severity, type, and initial impact estimate.</div>
+                            </div>
+                            <div class="help-workflow-step">
+                                <div class="help-workflow-num">2</div>
+                                <div><strong>Triage It</strong><br>Assign an owner, set status to Triaged, and add a next action with a due date.</div>
+                            </div>
+                            <div class="help-workflow-step">
+                                <div class="help-workflow-num">3</div>
+                                <div><strong>Investigate</strong><br>Change status to Investigating. Use the AAR form to do a 5-Whys if it's a one-time event.</div>
+                            </div>
+                            <div class="help-workflow-step">
+                                <div class="help-workflow-num">4</div>
+                                <div><strong>Escalate to Project</strong><br>If root cause needs a structured fix, create a DMAIC Project. Set issue status to In DMAIC.</div>
+                            </div>
+                            <div class="help-workflow-step">
+                                <div class="help-workflow-num">5</div>
+                                <div><strong>Run DMAIC</strong><br>Work through Define → Measure → Analyze → Improve → Control using the DMAIC page.</div>
+                            </div>
+                            <div class="help-workflow-step">
+                                <div class="help-workflow-num">6</div>
+                                <div><strong>Close and Document</strong><br>Mark the project Closed. Write an AAR to lock in lessons learned for the team.</div>
+                            </div>
+                        </div>
+
+                        <h3 class="help-sub-title">KPI Decline → Project</h3>
+                        <div class="help-workflow">
+                            <div class="help-workflow-step">
+                                <div class="help-workflow-num">1</div>
+                                <div><strong>Spot the trend</strong><br>KPI is trending away from target on the Dashboard or KPIs page.</div>
+                            </div>
+                            <div class="help-workflow-step">
+                                <div class="help-workflow-num">2</div>
+                                <div><strong>Create a Project</strong><br>Link the declining KPI(s) to the project under <em>Impacted KPIs</em>.</div>
+                            </div>
+                            <div class="help-workflow-step">
+                                <div class="help-workflow-num">3</div>
+                                <div><strong>Set the goal</strong><br>Use the DMAIC Define tab to state a measurable goal tied to the KPI target.</div>
+                            </div>
+                            <div class="help-workflow-step">
+                                <div class="help-workflow-num">4</div>
+                                <div><strong>Track progress</strong><br>As the project runs, add new KPI data points to show the improvement curve.</div>
+                            </div>
+                        </div>
+
+                        <h3 class="help-sub-title">Weekly Area Cadence</h3>
+                        <div class="help-workflow">
+                            <div class="help-workflow-step">
+                                <div class="help-workflow-num">1</div>
+                                <div><strong>Log the meeting</strong><br>Use + New Meeting or ⚡ Quick Capture. Set the area, attendees, and next meeting date.</div>
+                            </div>
+                            <div class="help-workflow-step">
+                                <div class="help-workflow-num">2</div>
+                                <div><strong>Review open issues</strong><br>Filter the Issues page by that area. Triage new ones and update status on open ones.</div>
+                            </div>
+                            <div class="help-workflow-step">
+                                <div class="help-workflow-num">3</div>
+                                <div><strong>Review project actions</strong><br>Check the Kanban or Projects page filtered to your area. Update action statuses.</div>
+                            </div>
+                            <div class="help-workflow-step">
+                                <div class="help-workflow-num">4</div>
+                                <div><strong>Log any improvements</strong><br>If a kaizen or process change was implemented, record it in SC Areas for that function.</div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Data Management -->
+                    <section id="help-data" class="help-section">
+                        <h2 class="help-section-title">Data Management</h2>
+                        <p>All data lives in your browser's <strong>localStorage</strong>. It persists across sessions but is specific to this browser on this device.</p>
+
+                        <div class="help-callout help-callout-warning">
+                            <span class="help-callout-icon">⚠️</span>
+                            <div><strong>Important:</strong> Clearing your browser's site data or cookies will permanently delete all records. Export regularly as a backup.</div>
+                        </div>
+
+                        <h3 class="help-sub-title">Export</h3>
+                        <p>Go to <strong>Settings → Export All Data (JSON)</strong>. A JSON file downloads to your computer. Keep a weekly export as your backup — store it somewhere safe.</p>
+
+                        <h3 class="help-sub-title">Import</h3>
+                        <p>Go to <strong>Settings → Import Data from JSON</strong>. Select a previously exported file. The app confirms before replacing current data.</p>
+
+                        <h3 class="help-sub-title">Audit Log</h3>
+                        <p>Every create, update, and delete action is recorded in the Audit Log. Access it from <strong>Settings → View Audit Log</strong>. The log keeps the last 500 entries.</p>
+
+                        <h3 class="help-sub-title">Demo Data</h3>
+                        <p>New to the app? Go to <strong>Settings → Load Demo Data</strong> to populate the app with sample issues, meetings, and a VSM so you can explore all features without entering real data first.</p>
+
+                        <div class="help-callout help-callout-info">
+                            <span class="help-callout-icon">ℹ️</span>
+                            <div>The storage key is <code>sc_ci_tracker_v1</code>. If you want to run multiple separate instances (e.g., different sites or teams), you would need to open each in a different browser profile.</div>
+                        </div>
+                    </section>
+
+                </article>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Modals Container -->
+    <div id="modal-container"></div>
+
+    <!-- VSM Modal (Global - Fullscreen) -->
+    <div id="vsmModal" class="modal modal-fullscreen hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="vsmTitle">Value Stream Map</h2>
+                <button class="modal-close" onclick="app.closeVSMModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="vsm-toolbar">
+                    <button class="btn btn-secondary" onclick="app.addVSMNode('Process')">+ Process</button>
+                    <button class="btn btn-secondary" onclick="app.addVSMNode('Queue')">+ Queue</button>
+                    <button class="btn btn-secondary" onclick="app.addVSMNode('Decision')">+ Decision</button>
+                    <button class="btn btn-secondary" onclick="app.addVSMNode('Supplier')">+ Supplier</button>
+                    <button class="btn btn-secondary" onclick="app.addVSMNode('Customer')">+ Customer</button>
+                    <button class="btn btn-secondary" onclick="app.toggleVSMConnectMode()">Connect Nodes</button>
+                    <button class="btn btn-primary" onclick="app.saveVSM()">Save VSM</button>
+                    <button class="btn btn-secondary" onclick="app.exportVSMJSON()">Export JSON</button>
+                </div>
+                <div class="vsm-summary" id="vsmSummary">
+                    <div>Total Lead Time: <span id="vsmTotalLT">0</span> hrs</div>
+                    <div>Total Cycle Time: <span id="vsmTotalCT">0</span> hrs</div>
+                    <div>Total WIP: <span id="vsmTotalWIP">0</span> units</div>
+                </div>
+                <div id="vsmCanvas" class="vsm-canvas"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script src="app-extensions.js"></script>
+    <script src="js/audit.js"></script>
+    <script src="js/vsm.js"></script>
+    <script src="js/issues.js"></script>
+    <script src="js/meetings.js"></script>
+    <script src="js/settings-enhanced.js"></script>
+    <script src="js/products.js"></script>
+    <script src="js/areas.js"></script>
+    <script src="js/calendar.js"></script>
+</body>
+</html>
