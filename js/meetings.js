@@ -320,6 +320,12 @@
     // ─── Attendee Picker ──────────────────────────────────────────────────────
 
     function initAttendeePicker(existingIds) {
+        // Clean up any leftover picker from a previous modal open
+        if (typeof app._attendeePickerCleanup === 'function') {
+            app._attendeePickerCleanup();
+            app._attendeePickerCleanup = null;
+        }
+
         _pickerSelectedIds = Array.isArray(existingIds) ? [...existingIds] : [];
         renderPickerTags();
 
@@ -327,40 +333,78 @@
         const dropdown = document.getElementById('attendeeDropdown');
         if (!input || !dropdown) return;
 
-        input.addEventListener('input', () => {
-            const q = input.value.trim();
-            if (!q) { dropdown.classList.add('hidden'); return; }
-            const all = typeof searchContacts === 'function' ? searchContacts(q) : [];
+        // Hoist dropdown to <body> so modal's overflow-y:auto doesn't clip it
+        document.body.appendChild(dropdown);
+        dropdown.style.position = 'fixed';
+        dropdown.style.zIndex   = '9999';
+        dropdown.style.right    = 'auto';
+        dropdown.style.top      = '-9999px';
+        dropdown.style.left     = '0';
+        dropdown.style.width    = '300px';
+
+        function positionDropdown() {
+            const rect = input.getBoundingClientRect();
+            dropdown.style.top   = (rect.bottom + 4) + 'px';
+            dropdown.style.left  = rect.left + 'px';
+            dropdown.style.width = rect.width + 'px';
+        }
+
+        function showDropdown(q) {
+            const all      = typeof searchContacts === 'function' ? searchContacts(q) : [];
             const filtered = all.filter(c => !_pickerSelectedIds.includes(c.id));
             let html = filtered.map(c => `
                 <li class="attendee-option" onclick="app.pickerSelect('${c.id}')">
                     <span class="attendee-option-avatar">${escapeHtml(getInitials(c.name))}</span>
-                    <span><strong>${escapeHtml(c.name)}</strong>${c.title ? ' · <small>' + escapeHtml(c.title) + '</small>' : ''}</span>
+                    <span><strong>${escapeHtml(c.name)}</strong>${(c.title || c.company) ? ' <small style="color:var(--muted)">· ' + escapeHtml(c.title || c.company) + '</small>' : ''}</span>
                 </li>`).join('');
-            if (q.length >= 1) {
+            if (q) {
                 html += `<li class="attendee-option attendee-option-new" onclick="app.pickerAddNew(document.getElementById('attendeeInput').value.trim())">
                     + Add "<strong>${escapeHtml(q)}</strong>" as new contact
                 </li>`;
             }
-            dropdown.innerHTML = html || '<li class="attendee-option-empty">No matching contacts</li>';
+            if (!html) {
+                html = '<li class="attendee-option-empty">No contacts yet — type a name to add one</li>';
+            }
+            dropdown.innerHTML = html;
+            positionDropdown();
             dropdown.classList.remove('hidden');
-        });
+        }
 
-        input.addEventListener('keydown', e => {
+        function onFocus() {
+            showDropdown(input.value.trim());
+        }
+
+        function onInput() {
+            showDropdown(input.value.trim());
+        }
+
+        function onKeydown(e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
                 const q = input.value.trim();
                 if (q) app.pickerAddNew(q);
             }
             if (e.key === 'Escape') dropdown.classList.add('hidden');
-        });
+        }
 
-        document.addEventListener('click', function outsideClick(e) {
-            if (!e.target.closest('#attendeePicker')) {
-                dropdown.classList.add('hidden');
-                document.removeEventListener('click', outsideClick);
-            }
-        });
+        function onDocClick(e) {
+            if (e.target.closest('#attendeePicker') || e.target.closest('#attendeeDropdown')) return;
+            dropdown.classList.add('hidden');
+        }
+
+        input.addEventListener('focus',   onFocus);
+        input.addEventListener('input',   onInput);
+        input.addEventListener('keydown', onKeydown);
+        document.addEventListener('click', onDocClick);
+
+        // Cleanup: called when meeting modal closes
+        app._attendeePickerCleanup = function() {
+            input.removeEventListener('focus',   onFocus);
+            input.removeEventListener('input',   onInput);
+            input.removeEventListener('keydown', onKeydown);
+            document.removeEventListener('click', onDocClick);
+            if (dropdown && dropdown.parentNode === document.body) dropdown.remove();
+        };
     }
 
     function renderPickerTags() {
@@ -378,7 +422,9 @@
             renderPickerTags();
         }
         const input    = document.getElementById('attendeeInput');
-        const dropdown = document.getElementById('attendeeDropdown');
+        // Dropdown may now live in body
+        const dropdown = document.getElementById('attendeeDropdown') ||
+                         document.querySelector('.attendee-dropdown');
         if (input) input.value = '';
         if (dropdown) dropdown.classList.add('hidden');
         if (input) input.focus();
@@ -675,6 +721,10 @@
     }
 
     function closeMeetingModal() {
+        if (typeof app._attendeePickerCleanup === 'function') {
+            app._attendeePickerCleanup();
+            app._attendeePickerCleanup = null;
+        }
         const modal = document.getElementById('meetingModal');
         if (modal) modal.remove();
     }
