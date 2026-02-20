@@ -1301,6 +1301,13 @@ canvas {
     margin-bottom: 2px;
 }
 
+.contact-company {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-2);
+    margin-bottom: 1px;
+}
+
 .contact-role {
     font-size: 13px;
     color: var(--text-2);

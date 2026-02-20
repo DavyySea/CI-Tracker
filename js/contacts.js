@@ -65,6 +65,7 @@
                 <div class="contact-avatar">${escapeHtml(initials)}</div>
                 <div class="contact-info">
                     <div class="contact-name">${escapeHtml(contact.name)}</div>
+                    ${contact.company ? `<div class="contact-company">${escapeHtml(contact.company)}</div>` : ''}
                     ${contact.title ? `<div class="contact-role">${escapeHtml(contact.title)}${contact.department ? ' · ' + escapeHtml(contact.department) : ''}</div>` : ''}
                     ${contact.email ? `<a class="contact-email" href="mailto:${escapeHtml(contact.email)}">${escapeHtml(contact.email)}</a>` : ''}
                     ${contact.phone ? `<div class="contact-phone">📞 ${escapeHtml(contact.phone)}</div>` : ''}
@@ -99,6 +100,12 @@
                                 <label>Full Name *</label>
                                 <input type="text" id="contactName" class="form-control" required
                                     value="${escapeHtml(prefill.name || '')}" placeholder="e.g. Jane Smith">
+                            </div>
+
+                            <div class="form-group">
+                                <label>Company</label>
+                                <input type="text" id="contactCompany" class="form-control"
+                                    value="${escapeHtml(prefill.company || '')}" placeholder="e.g. Acme Corp">
                             </div>
 
                             <div class="form-group">
@@ -159,6 +166,7 @@
         const contact = {
             id:         id || generateId(),
             name,
+            company:    document.getElementById('contactCompany').value.trim(),
             email:      document.getElementById('contactEmail').value.trim(),
             title:      document.getElementById('contactTitle').value.trim(),
             department: document.getElementById('contactDepartment').value.trim(),
