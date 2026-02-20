@@ -210,9 +210,13 @@
                             ${meeting.location ? ' • ' + escapeHtml(meeting.location) : ''}
                         </div>
                     </div>
-                    <div style="display: flex; gap: 6px;">
+                    <div style="display: flex; gap: 6px; align-items: center;">
                         ${meeting.type ? `<span class="status-badge">${escapeHtml(meeting.type)}</span>` : ''}
                         ${meeting.section ? `<span class="status-badge">${escapeHtml(meeting.section)}</span>` : ''}
+                        <button class="btn btn-secondary btn-small" style="margin-left:4px;"
+                            onclick="event.stopPropagation(); app.editMeetingBasicInfo('${meeting.id}')">Edit</button>
+                        <button class="btn btn-danger btn-small"
+                            onclick="event.stopPropagation(); app.deleteMeeting('${meeting.id}')">Delete</button>
                     </div>
                 </div>
                 ${getMeetingAttendeesDisplay(meeting) ? `
