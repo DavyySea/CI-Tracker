@@ -88,17 +88,7 @@
     }
 
     function setupMeetingPageListeners() {
-        // Create Meeting button
-        const createBtn = document.querySelector('#page-meetings .btn-primary');
-        if (createBtn) {
-            createBtn.addEventListener('click', showCreateMeetingModal);
-        }
-
-        // Quick Capture button
-        const quickBtn = document.querySelector('#page-meetings .btn-secondary');
-        if (quickBtn) {
-            quickBtn.addEventListener('click', showQuickCaptureMeetingModal);
-        }
+        // Buttons use onclick attributes in HTML — no duplicate listeners needed
     }
 
     function setupViewToggle() {
@@ -320,7 +310,6 @@
     // ─── Attendee Picker ──────────────────────────────────────────────────────
 
     function initAttendeePicker(existingIds) {
-        // Clean up any leftover picker from a previous modal open
         if (typeof app._attendeePickerCleanup === 'function') {
             app._attendeePickerCleanup();
             app._attendeePickerCleanup = null;
@@ -329,54 +318,32 @@
         _pickerSelectedIds = Array.isArray(existingIds) ? [...existingIds] : [];
         renderPickerTags();
 
-        const input    = document.getElementById('attendeeInput');
-        const dropdown = document.getElementById('attendeeDropdown');
-        if (!input || !dropdown) return;
+        const input       = document.getElementById('attendeeInput');
+        const suggestions = document.getElementById('attendeeDropdown');
+        if (!input || !suggestions) return;
 
-        // Hoist dropdown to <body> so modal's overflow-y:auto doesn't clip it
-        document.body.appendChild(dropdown);
-        dropdown.style.position = 'fixed';
-        dropdown.style.zIndex   = '9999';
-        dropdown.style.right    = 'auto';
-        dropdown.style.top      = '-9999px';
-        dropdown.style.left     = '0';
-        dropdown.style.width    = '300px';
-
-        function positionDropdown() {
-            const rect = input.getBoundingClientRect();
-            dropdown.style.top   = (rect.bottom + 4) + 'px';
-            dropdown.style.left  = rect.left + 'px';
-            dropdown.style.width = rect.width + 'px';
-        }
-
-        function showDropdown(q) {
+        function showSuggestions(q) {
             const all      = typeof searchContacts === 'function' ? searchContacts(q) : [];
             const filtered = all.filter(c => !_pickerSelectedIds.includes(c.id));
             let html = filtered.map(c => `
-                <li class="attendee-option" onclick="app.pickerSelect('${c.id}')">
+                <div class="attendee-option" onclick="app.pickerSelect('${c.id}')">
                     <span class="attendee-option-avatar">${escapeHtml(getInitials(c.name))}</span>
                     <span><strong>${escapeHtml(c.name)}</strong>${(c.title || c.company) ? ' <small style="color:var(--muted)">· ' + escapeHtml(c.title || c.company) + '</small>' : ''}</span>
-                </li>`).join('');
+                </div>`).join('');
             if (q) {
-                html += `<li class="attendee-option attendee-option-new" onclick="app.pickerAddNew(document.getElementById('attendeeInput').value.trim())">
+                html += `<div class="attendee-option attendee-option-new" onclick="app.pickerAddNew(document.getElementById('attendeeInput').value.trim())">
                     + Add "<strong>${escapeHtml(q)}</strong>" as new contact
-                </li>`;
+                </div>`;
             }
             if (!html) {
-                html = '<li class="attendee-option-empty">No contacts yet — type a name to add one</li>';
+                html = '<div class="attendee-option-empty">No contacts yet — type a name and press Enter to add one</div>';
             }
-            dropdown.innerHTML = html;
-            positionDropdown();
-            dropdown.classList.remove('hidden');
+            suggestions.innerHTML = html;
+            suggestions.classList.remove('hidden');
         }
 
-        function onFocus() {
-            showDropdown(input.value.trim());
-        }
-
-        function onInput() {
-            showDropdown(input.value.trim());
-        }
+        function onFocus()  { showSuggestions(input.value.trim()); }
+        function onInput()  { showSuggestions(input.value.trim()); }
 
         function onKeydown(e) {
             if (e.key === 'Enter') {
@@ -384,12 +351,12 @@
                 const q = input.value.trim();
                 if (q) app.pickerAddNew(q);
             }
-            if (e.key === 'Escape') dropdown.classList.add('hidden');
+            if (e.key === 'Escape') suggestions.classList.add('hidden');
         }
 
         function onDocClick(e) {
             if (e.target.closest('#attendeePicker') || e.target.closest('#attendeeDropdown')) return;
-            dropdown.classList.add('hidden');
+            suggestions.classList.add('hidden');
         }
 
         input.addEventListener('focus',   onFocus);
@@ -397,13 +364,11 @@
         input.addEventListener('keydown', onKeydown);
         document.addEventListener('click', onDocClick);
 
-        // Cleanup: called when meeting modal closes
         app._attendeePickerCleanup = function() {
             input.removeEventListener('focus',   onFocus);
             input.removeEventListener('input',   onInput);
             input.removeEventListener('keydown', onKeydown);
             document.removeEventListener('click', onDocClick);
-            if (dropdown && dropdown.parentNode === document.body) dropdown.remove();
         };
     }
 
@@ -513,6 +478,10 @@
 
     // Create Meeting Modal (WITH Notes Sections - All-in-One)
     function showCreateMeetingModal(prefillData = {}) {
+        // Guard against double-open (button has both onclick and addEventListener)
+        const existing = document.getElementById('meetingModal');
+        if (existing) existing.remove();
+
         const now = new Date();
         const today = now.toISOString().split('T')[0];
         const currentTime = now.toTimeString().slice(0, 5);
@@ -584,10 +553,10 @@
                                 <div class="attendee-picker" id="attendeePicker">
                                     <div class="attendee-tags" id="attendeeTagsList"></div>
                                     <input type="text" id="attendeeInput" class="attendee-input"
-                                           placeholder="Search or type a name to add…" autocomplete="off">
-                                    <ul class="attendee-dropdown hidden" id="attendeeDropdown"></ul>
+                                           placeholder="Click here to search contacts…" autocomplete="off">
                                 </div>
-                                <small style="color:var(--muted);">Select from saved contacts or type a name to create one.</small>
+                                <div class="attendee-suggestions hidden" id="attendeeDropdown"></div>
+                                <small style="color:var(--muted);">Click the field to browse contacts, or type to search. Press Enter to add a new contact.</small>
                             </div>
 
                             <hr style="margin: 24px 0; border: none; border-top: 2px solid var(--border);">

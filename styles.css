@@ -1374,6 +1374,7 @@ canvas {
 .attendee-picker:focus-within {
     border-color: var(--accent);
     box-shadow: 0 0 0 2px rgba(172,255,36,0.15);
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
 }
 
 .attendee-tags {
@@ -1447,6 +1448,45 @@ canvas {
 }
 
 .attendee-dropdown.hidden { display: none; }
+
+/* Inline suggestions panel — no absolute positioning, sits in normal flow */
+.attendee-suggestions {
+    background: var(--surface);
+    border: 1px solid var(--border-2);
+    border-top: none;
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+    max-height: 220px;
+    overflow-y: auto;
+    margin-bottom: 4px;
+}
+
+.attendee-suggestions.hidden { display: none; }
+
+.attendee-suggestions .attendee-option {
+    padding: 8px 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+}
+.attendee-suggestions .attendee-option:hover { background: var(--hover, rgba(172,255,36,.08)); }
+
+.attendee-suggestions .attendee-option-new {
+    color: var(--accent);
+    font-style: italic;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    border-top: 1px solid var(--border);
+}
+.attendee-suggestions .attendee-option-new:hover { background: var(--hover, rgba(172,255,36,.08)); }
+
+.attendee-suggestions .attendee-option-empty {
+    padding: 10px 12px;
+    color: var(--muted);
+    font-size: 12px;
+}
 
 .attendee-option {
     display: flex;
