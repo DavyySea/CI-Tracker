@@ -663,6 +663,15 @@ function generateId() {
     });
 }
 
+function escapeHtml(text) {
+    if (!text) return '';
+    return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
 function formatDate(date) {
     if (typeof date === 'string') return date;
     const year = date.getFullYear();
