@@ -762,9 +762,14 @@
     }
 
     function createAARFromIssue(issueId) {
+        const issue = app.data.issues.find(i => i.id === issueId);
         closeIssueDetailModal();
-        showToast('AAR creation from issue - feature coming in AAR module', 'info');
-        // This will be implemented when AAR functionality is enhanced
+        // Open the AAR modal, pre-filling from the issue
+        if (typeof showCreateAARModal === 'function') {
+            showCreateAARModal(issue ? { issueId: issue.id, area: issue.section || '' } : {});
+        } else {
+            navigateToPage('aar');
+        }
     }
 
     function startVSMForIssue(issueId) {

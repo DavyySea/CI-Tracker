@@ -163,6 +163,14 @@
 
         if (!app.data.contacts) app.data.contacts = [];
 
+        // Duplicate name check (skip when editing the same record)
+        const duplicate = app.data.contacts.find(c =>
+            c.name.toLowerCase() === name.toLowerCase() && c.id !== id
+        );
+        if (duplicate) {
+            if (!confirm(`A contact named "${duplicate.name}" already exists. Save anyway?`)) return;
+        }
+
         const existing = id ? (app.data.contacts || []).find(c => c.id === id) : null;
         const contact = {
             id:         id || generateId(),

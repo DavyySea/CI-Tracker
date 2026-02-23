@@ -743,6 +743,28 @@ function initNavigation() {
 
     // Setup filters and search handlers
     setupFilterHandlers();
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+        // Don't fire when typing in inputs
+        const tag = document.activeElement?.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+        // Don't fire when a modal is open
+        if (document.querySelector('.modal-overlay')) return;
+
+        if (e.ctrlKey || e.metaKey) {
+            if (e.key === 'k' || e.key === 'K') {
+                e.preventDefault();
+                document.getElementById('globalSearch')?.focus();
+            }
+            return;
+        }
+
+        switch (e.key) {
+            case 'n': case 'N': quickCreateIssue();   break;
+            case 'm': case 'M': quickCreateMeeting(); break;
+        }
+    });
 }
 
 function navigateToPage(page) {
@@ -801,6 +823,9 @@ function renderCurrentPage() {
             break;
         case 'calendar':
             if (typeof renderCalendarPage === 'function') renderCalendarPage();
+            break;
+        case 'kanban':
+            if (typeof renderKanbanBoard === 'function') renderKanbanBoard();
             break;
         case 'help':
             // Static page — no render needed
@@ -950,16 +975,22 @@ function renderKPISummary() {
         const lastValue = kpi.dataPoints.length > 0 ? kpi.dataPoints[kpi.dataPoints.length - 1].value : 0;
         const trend = calculateTrend(kpi.dataPoints);
         const trendArrow = trend > 0 ? '↗' : trend < 0 ? '↘' : '→';
-        const vsTarget = lastValue >= kpi.target ? 'on-track' : 'off-track';
+        const onTarget = lastValue >= kpi.target;
+        // Green = on target; yellow = off-target but improving; red = off-target and declining/flat
+        const trendColor = onTarget ? 'var(--success, #22c55e)'
+                         : trend > 0 ? '#eab308'
+                         : 'var(--danger, #ef4444)';
 
         return `
             <div class="kpi-card" data-kpi-id="${kpi.id}">
                 <div class="kpi-card-header">
                     <div class="kpi-name">${kpi.name}</div>
-                    <div class="kpi-trend">${trendArrow}</div>
+                    <div class="kpi-trend" style="color:${trendColor}; font-weight:700;">${trendArrow}</div>
                 </div>
                 <div class="kpi-value">${formatKPIValue(lastValue, kpi.unit)}</div>
-                <div class="kpi-target">Target: ${formatKPIValue(kpi.target, kpi.unit)}</div>
+                <div class="kpi-target" style="color:${onTarget ? 'var(--success,#22c55e)' : 'var(--muted)'}">
+                    Target: ${formatKPIValue(kpi.target, kpi.unit)}
+                </div>
                 <span class="kpi-category">${kpi.category}</span>
             </div>
         `;
@@ -1131,15 +1162,21 @@ function renderKPIs() {
         const lastValue = kpi.dataPoints.length > 0 ? kpi.dataPoints[kpi.dataPoints.length - 1].value : 0;
         const trend = calculateTrend(kpi.dataPoints);
         const trendArrow = trend > 0 ? '↗' : trend < 0 ? '↘' : '→';
+        const onTarget = lastValue >= kpi.target;
+        const trendColor = onTarget ? 'var(--success, #22c55e)'
+                         : trend > 0 ? '#eab308'
+                         : 'var(--danger, #ef4444)';
 
         return `
             <div class="kpi-card" data-kpi-id="${kpi.id}">
                 <div class="kpi-card-header">
                     <div class="kpi-name">${kpi.name}</div>
-                    <div class="kpi-trend">${trendArrow}</div>
+                    <div class="kpi-trend" style="color:${trendColor}; font-weight:700;">${trendArrow}</div>
                 </div>
                 <div class="kpi-value">${formatKPIValue(lastValue, kpi.unit)}</div>
-                <div class="kpi-target">Target: ${formatKPIValue(kpi.target, kpi.unit)} | Owner: ${kpi.owner}</div>
+                <div class="kpi-target" style="color:${onTarget ? 'var(--success,#22c55e)' : 'var(--muted)'}">
+                    Target: ${formatKPIValue(kpi.target, kpi.unit)} | Owner: ${kpi.owner}
+                </div>
                 <span class="kpi-category">${kpi.category}</span>
             </div>
         `;
@@ -4110,7 +4147,23 @@ function resetToSampleData() {
     renderCurrentPage();
 }
 
+// ─── Quick Create helpers (used by top-bar buttons + keyboard shortcuts) ────
+
+function quickCreateIssue() {
+    if (typeof app.showCreateIssueModal === 'function') {
+        app.showCreateIssueModal();
+    }
+}
+
+function quickCreateMeeting() {
+    if (typeof showCreateMeetingModal === 'function') {
+        showCreateMeetingModal();
+    }
+}
+
 // Wire up global functions
+window.quickCreateIssue  = quickCreateIssue;
+window.quickCreateMeeting = quickCreateMeeting;
 window.showProcessDetailModal = showProcessDetailModal;
 window.createProcess = createProcess;
 window.editProcess = editProcess;
