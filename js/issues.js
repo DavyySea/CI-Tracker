@@ -17,6 +17,9 @@
         product: ''
     };
 
+    // Bulk selection state
+    let selectedIssueIds = new Set();
+
     // Initialize when DOM is ready
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initIssuesModule);
@@ -249,7 +252,29 @@
             return;
         }
 
-        let html = '';
+        const selCount = selectedIssueIds.size;
+        const allVisibleSelected = filteredIssues.length > 0 && filteredIssues.every(i => selectedIssueIds.has(i.id));
+
+        let html = `
+            <div id="issueBulkBar" style="display:${selCount > 0 ? 'flex' : 'none'}; align-items:center; gap:10px; padding:8px 12px; margin-bottom:10px; background:var(--surface-2); border:1px solid var(--accent); border-radius:6px; flex-wrap:wrap;">
+                <span style="font-size:13px; font-weight:600; color:var(--accent);">${selCount} selected</span>
+                <select id="bulkStatusSelect" class="form-control" style="width:auto; display:inline-block; padding:4px 8px; font-size:13px;">
+                    <option value="">Change status to…</option>
+                    <option value="New">New</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="On Hold">On Hold</option>
+                    <option value="Closed">Closed</option>
+                </select>
+                <button class="btn btn-primary btn-small" onclick="app.applyBulkStatus()">Apply</button>
+                <button class="btn btn-secondary btn-small" onclick="app.clearBulkSelection()">Clear</button>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; font-size:13px; color:var(--muted);">
+                <label style="display:flex; align-items:center; gap:6px; cursor:pointer; user-select:none;">
+                    <input type="checkbox" ${allVisibleSelected ? 'checked' : ''} onchange="app.toggleSelectAllIssues(this.checked)" style="width:15px; height:15px; cursor:pointer;">
+                    Select all (${filteredIssues.length})
+                </label>
+            </div>`;
+
         filteredIssues.forEach(issue => {
             html += renderIssueCard(issue);
         });
@@ -260,10 +285,14 @@
         const linkedProjects = issue.linkedProjectIds?.length || 0;
         const linkedMeetings = issue.linkedMeetingIds?.length || 0;
         const linkedAARs = issue.linkedAarIds?.length || 0;
+        const isSelected = selectedIssueIds.has(issue.id);
 
         return `
-            <div class="issue-card" onclick="app.viewIssueDetail('${issue.id}')">
+            <div class="issue-card ${isSelected ? 'issue-card-selected' : ''}" style="position:relative;" onclick="app.viewIssueDetail('${issue.id}')">
                 <div class="issue-severity-indicator severity-${issue.severity.toLowerCase()}"></div>
+                <div style="position:absolute; top:10px; right:10px; z-index:2;" onclick="event.stopPropagation();">
+                    <input type="checkbox" ${isSelected ? 'checked' : ''} onchange="app.toggleIssueSelection('${issue.id}')" style="width:15px; height:15px; cursor:pointer;" title="Select">
+                </div>
                 <div class="issue-content">
                     <div class="issue-header">
                         <div class="issue-title">${escapeHtml(issue.title)}</div>
@@ -785,6 +814,51 @@
         }
     }
 
+    function toggleIssueSelection(issueId) {
+        if (selectedIssueIds.has(issueId)) {
+            selectedIssueIds.delete(issueId);
+        } else {
+            selectedIssueIds.add(issueId);
+        }
+        renderIssuesList();
+    }
+
+    function toggleSelectAllIssues(checked) {
+        const container = document.getElementById('issue-list');
+        if (!container) return;
+        // Get currently rendered issue IDs from checkboxes
+        container.querySelectorAll('input[type="checkbox"][onchange*="toggleIssueSelection"]').forEach(cb => {
+            const match = cb.getAttribute('onchange').match(/'([^']+)'/);
+            if (match) {
+                if (checked) selectedIssueIds.add(match[1]);
+                else selectedIssueIds.delete(match[1]);
+            }
+        });
+        renderIssuesList();
+    }
+
+    function clearBulkSelection() {
+        selectedIssueIds.clear();
+        renderIssuesList();
+    }
+
+    function applyBulkStatus() {
+        const newStatus = document.getElementById('bulkStatusSelect')?.value;
+        if (!newStatus) { showToast('Please select a status to apply', 'error'); return; }
+        if (selectedIssueIds.size === 0) return;
+
+        let count = 0;
+        selectedIssueIds.forEach(id => {
+            const issue = (app.data.issues || []).find(i => i.id === id);
+            if (issue) { issue.status = newStatus; count++; }
+        });
+
+        saveData();
+        selectedIssueIds.clear();
+        renderIssuesList();
+        showToast(`${count} issue${count !== 1 ? 's' : ''} updated to "${newStatus}"`);
+    }
+
     function clearIssueFilters() {
         issueFilters = {
             search: '',
@@ -853,5 +927,9 @@
     app.startVSMForIssue = startVSMForIssue;
     app.clearIssueFilters = clearIssueFilters;
     app.renderIssuesPage = renderIssuesPage;
+    app.toggleIssueSelection = toggleIssueSelection;
+    app.toggleSelectAllIssues = toggleSelectAllIssues;
+    app.clearBulkSelection = clearBulkSelection;
+    app.applyBulkStatus = applyBulkStatus;
 
 })();

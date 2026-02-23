@@ -1652,8 +1652,13 @@ function renderProjects() {
         const priorityClass = project.priority === 'High' ? 'priority-high' :
                             project.priority === 'Med' ? 'priority-med' : 'priority-low';
 
-        const openActions = project.actions.filter(a => a.status !== 'Done').length;
-        const overdueActions = project.actions.filter(a => a.status !== 'Done' && isOverdue(a.dueDate)).length;
+        const totalActions = (project.actions || []).length;
+        const doneActions = (project.actions || []).filter(a => a.status === 'Done').length;
+        const openActions = totalActions - doneActions;
+        const overdueActions = (project.actions || []).filter(a => a.status !== 'Done' && isOverdue(a.dueDate)).length;
+        const pct = totalActions > 0 ? Math.round((doneActions / totalActions) * 100) : 0;
+        const barColor = pct === 100 ? 'var(--success,#22c55e)' : overdueActions > 0 ? 'var(--danger,#ef4444)' : 'var(--accent)';
+        const nextAction = (project.actions || []).find(a => a.status !== 'Done');
 
         const linkedProducts = (project.productIds || []).map(pid => {
             const p = (app.data.products || []).find(p => p.id === pid);
@@ -1679,10 +1684,25 @@ function renderProjects() {
                 <div style="margin: 12px 0; color: var(--gray-700); font-size: 13px;">
                     ${project.problemStatement}
                 </div>
+                ${totalActions > 0 ? `
+                <div style="margin: 10px 0 4px;">
+                    <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--muted); margin-bottom:4px;">
+                        <span>${doneActions}/${totalActions} actions complete</span>
+                        <span>${pct}%</span>
+                    </div>
+                    <div style="height:5px; background:var(--surface-3); border-radius:3px; overflow:hidden;">
+                        <div style="height:100%; width:${pct}%; background:${barColor}; border-radius:3px; transition:width 0.3s;"></div>
+                    </div>
+                </div>` : ''}
+                ${nextAction ? `
+                <div style="display:flex; align-items:center; gap:8px; margin:6px 0; padding:5px 8px; background:var(--surface-2); border-radius:4px; font-size:12px; color:var(--muted);">
+                    <span style="flex:1; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">↳ ${escapeHtml(nextAction.text)}</span>
+                    <button class="btn btn-success btn-small" style="flex-shrink:0; font-size:11px; padding:2px 8px;" onclick="quickMarkActionDone('${project.id}','${nextAction.id}',event)">Done</button>
+                </div>` : ''}
                 <div class="project-meta">
                     <span>Due: ${project.dueDate}</span>
-                    <span>Actions: ${openActions} open${overdueActions > 0 ? ` (${overdueActions} overdue)` : ''}</span>
-                    <span>Last updated: ${project.lastUpdated}</span>
+                    <span>${openActions} open${overdueActions > 0 ? ` · <span style="color:var(--danger);">${overdueActions} overdue</span>` : ''}</span>
+                    <span>Updated: ${project.lastUpdated}</span>
                 </div>
             </div>
         `;
@@ -2084,6 +2104,19 @@ function editAction(projectId, actionId) {
     document.getElementById('modal-container').insertAdjacentHTML('beforeend', actionModal);
 }
 
+function quickMarkActionDone(projectId, actionId, event) {
+    if (event) event.stopPropagation();
+    const project = app.data.projects.find(p => p.id === projectId);
+    if (!project) return;
+    const action = project.actions.find(a => a.id === actionId);
+    if (action) {
+        action.status = 'Done';
+        saveData();
+        renderProjects();
+        showToast('Action marked done');
+    }
+}
+
 function markActionDone(projectId, actionId) {
     const project = app.data.projects.find(p => p.id === projectId);
     if (!project) return;
@@ -2354,6 +2387,7 @@ function closeSecondaryModal() {
 window.addProjectAction = addProjectAction;
 window.saveProjectAction = saveProjectAction;
 window.editAction = editAction;
+window.quickMarkActionDone = quickMarkActionDone;
 window.markActionDone = markActionDone;
 window.toggleActionBlocked = toggleActionBlocked;
 window.deleteAction = deleteAction;
@@ -2692,7 +2726,7 @@ function renderAAR() {
         const statusClass = aar.status === 'Closed' ? 'status-closed' : '';
 
         return `
-            <div class="aar-card" data-aar-id="${aar.id}">
+            <div class="aar-card" data-aar-id="${aar.id}" style="cursor:pointer;" onclick="showAARDetailModal('${aar.id}')">
                 <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
                     <div>
                         <div style="font-weight: 600; font-size: 15px; margin-bottom: 4px;">${aar.incidentType} - ${aar.date}</div>
@@ -3239,6 +3273,7 @@ function deleteAAR(aarId) {
 }
 
 window.copyDMAICSummary = copyDMAICSummary;
+window.showAARDetailModal = showAARDetailModal;
 window.createAAR = createAAR;
 window.editAAR = editAAR;
 window.updateAAR = updateAAR;
@@ -4196,7 +4231,12 @@ function resetToSampleData() {
         processDocs: [],
         meetings: [],
         products: [],
-        areaImprovements: []
+        areaImprovements: [],
+        contacts: [],
+        scAreas: [],
+        issues: [],
+        vsmMaps: [],
+        auditLog: []
     };
 
     seedSampleData();

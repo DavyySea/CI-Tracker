@@ -42,11 +42,54 @@
         initKeyboardShortcuts();
         initQuickCreateButtons();
         updateNavigationBadges();
+        restoreAllFilters();
+        setupFilterPersistence();
 
         // Update dashboard if on dashboard page
         if (app.currentPage === 'dashboard') {
             setTimeout(renderEnhancedDashboard, 100);
         }
+    }
+
+    // Filter Persistence
+    const FILTER_PAGES = {
+        'projects': ['project-search', 'project-area-filter', 'project-status-filter', 'project-health-filter', 'project-product-filter'],
+        'aar':      ['aar-search', 'aar-area-filter', 'aar-type-filter', 'aar-status-filter'],
+        'kpis':     ['kpi-search', 'kpi-category-filter'],
+        'process':  ['process-search', 'process-area-filter'],
+    };
+
+    function restoreAllFilters() {
+        Object.entries(FILTER_PAGES).forEach(([page, ids]) => {
+            const raw = sessionStorage.getItem('ci_filters_' + page);
+            if (!raw) return;
+            try {
+                const state = JSON.parse(raw);
+                ids.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el && state[id] !== undefined) el.value = state[id];
+                });
+            } catch(e) {}
+        });
+    }
+
+    function setupFilterPersistence() {
+        Object.entries(FILTER_PAGES).forEach(([page, ids]) => {
+            const save = () => {
+                const state = {};
+                ids.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) state[id] = el.value;
+                });
+                sessionStorage.setItem('ci_filters_' + page, JSON.stringify(state));
+            };
+            ids.forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.addEventListener('input', save);
+                el.addEventListener('change', save);
+            });
+        });
     }
 
     // Global Search
@@ -127,6 +170,14 @@
             aar.incidentType?.toLowerCase().includes(lowerQuery)
         ).slice(0, 5);
 
+        // Search Contacts
+        results.contacts = (app.data.contacts || []).filter(c =>
+            c.name?.toLowerCase().includes(lowerQuery) ||
+            c.email?.toLowerCase().includes(lowerQuery) ||
+            c.company?.toLowerCase().includes(lowerQuery) ||
+            c.title?.toLowerCase().includes(lowerQuery)
+        ).slice(0, 5);
+
         renderSearchResults(results);
     }
 
@@ -135,7 +186,8 @@
         if (!searchResults) return;
 
         const totalResults = results.issues.length + results.projects.length +
-                           results.meetings.length + results.aars.length;
+                           results.meetings.length + results.aars.length +
+                           (results.contacts || []).length;
 
         if (totalResults === 0) {
             searchResults.innerHTML = '<div class="search-no-results">No results found</div>';
@@ -201,11 +253,28 @@
             html += '<div class="search-result-header">After Action Reports</div>';
             results.aars.forEach(aar => {
                 html += `
-                    <div class="search-result-item" onclick="navigateToPage('aar'); app.viewAARDetail('${aar.id}');">
+                    <div class="search-result-item" onclick="navigateToPage('aar');">
                         <div class="search-result-icon">📝</div>
                         <div class="search-result-content">
-                            <div class="search-result-title">${escapeHtml(aar.title)}</div>
-                            <div class="search-result-meta">${aar.area || 'No area'} • ${aar.type || 'No type'}</div>
+                            <div class="search-result-title">${escapeHtml(aar.description || aar.incidentType || 'AAR')}</div>
+                            <div class="search-result-meta">${aar.area || 'No area'} • ${aar.incidentType || ''}</div>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+        }
+
+        if ((results.contacts || []).length > 0) {
+            html += '<div class="search-result-section">';
+            html += '<div class="search-result-header">Contacts</div>';
+            results.contacts.forEach(c => {
+                html += `
+                    <div class="search-result-item" onclick="navigateToPage('contacts');">
+                        <div class="search-result-icon">👤</div>
+                        <div class="search-result-content">
+                            <div class="search-result-title">${escapeHtml(c.name)}</div>
+                            <div class="search-result-meta">${c.title ? escapeHtml(c.title) + ' · ' : ''}${c.company ? escapeHtml(c.company) : c.email ? escapeHtml(c.email) : ''}</div>
                         </div>
                     </div>
                 `;
@@ -220,6 +289,19 @@
     // Keyboard Shortcuts
     function initKeyboardShortcuts() {
         document.addEventListener('keydown', (e) => {
+            // Escape closes any open modal
+            if (e.key === 'Escape') {
+                const modal = document.querySelector('.modal-overlay');
+                if (modal) {
+                    modal.remove();
+                    return;
+                }
+                // Also close global search results
+                const searchResults = document.getElementById('globalSearchResults');
+                if (searchResults) searchResults.classList.add('hidden');
+                return;
+            }
+
             // Ctrl+K or Cmd+K for global search
             if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
                 e.preventDefault();
