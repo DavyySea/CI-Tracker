@@ -327,6 +327,7 @@
 
     // Enhanced Dashboard Rendering
     function renderEnhancedDashboard() {
+        renderDashboardStatStrip();
         renderOverdueActionsWidget();
         renderIssuesTriageWidget();
         renderUpcomingFollowupsWidget();
@@ -336,6 +337,89 @@
         renderProjectsHealthWidget();
         renderRootCauseParetoWidget();
         renderRecentActivityWidget();
+    }
+
+    function renderDashboardStatStrip() {
+        const container = document.getElementById('dashboard-stat-strip');
+        if (!container) return;
+
+        const today = new Date().toISOString().split('T')[0];
+        const issues = app.data.issues || [];
+        const projects = app.data.projects || [];
+        const meetings = app.data.meetings || [];
+
+        // Open issues
+        const openIssues = issues.filter(i => i.status !== 'Closed').length;
+        const criticalIssues = issues.filter(i => i.status !== 'Closed' && (i.severity === 'Critical' || i.severity === 'High')).length;
+
+        // Active projects
+        const activeProjects = projects.filter(p => p.status !== 'Closed').length;
+        const atRisk = projects.filter(p => p.status !== 'Closed' && (p.health === 'At Risk' || p.health === 'Off Track')).length;
+
+        // Meetings today
+        const todayMeetings = meetings.filter(m => (m.date || '').startsWith(today)).length;
+
+        // Overdue actions
+        const now = new Date();
+        let overdueActions = 0;
+        projects.forEach(p => (p.actions || []).forEach(a => {
+            if (a.status !== 'Done' && a.dueDate && new Date(a.dueDate) < now) overdueActions++;
+        }));
+        issues.forEach(i => {
+            if (i.status !== 'Closed' && i.nextActionDueDate && new Date(i.nextActionDueDate) < now) overdueActions++;
+        });
+
+        // Open action items total
+        let openActions = 0;
+        projects.forEach(p => (p.actions || []).forEach(a => {
+            if (a.status !== 'Done') openActions++;
+        }));
+
+        const stats = [
+            {
+                label: 'Open Issues',
+                value: openIssues,
+                sub: criticalIssues > 0 ? `${criticalIssues} critical/high` : 'none critical',
+                cls: criticalIssues > 0 ? 'stat-danger' : 'stat-success',
+                nav: 'issues'
+            },
+            {
+                label: 'Active Projects',
+                value: activeProjects,
+                sub: atRisk > 0 ? `${atRisk} at risk` : 'all on track',
+                cls: atRisk > 0 ? 'stat-warning' : 'stat-success',
+                nav: 'projects'
+            },
+            {
+                label: 'Meetings Today',
+                value: todayMeetings,
+                sub: todayMeetings === 0 ? 'none scheduled' : 'scheduled today',
+                cls: todayMeetings > 0 ? 'stat-accent' : '',
+                nav: 'meetings'
+            },
+            {
+                label: 'Overdue Actions',
+                value: overdueActions,
+                sub: overdueActions === 0 ? 'all on track' : 'need attention',
+                cls: overdueActions > 0 ? 'stat-danger' : 'stat-success',
+                nav: 'projects'
+            },
+            {
+                label: 'Open Actions',
+                value: openActions,
+                sub: 'across all projects',
+                cls: '',
+                nav: 'projects'
+            }
+        ];
+
+        container.innerHTML = stats.map(s => `
+            <div class="dash-stat-card ${s.cls}" onclick="navigateToPage('${s.nav}')">
+                <div class="dash-stat-label">${s.label}</div>
+                <div class="dash-stat-value">${s.value}</div>
+                <div class="dash-stat-sub">${s.sub}</div>
+            </div>
+        `).join('');
     }
 
     function renderOverdueActionsWidget() {

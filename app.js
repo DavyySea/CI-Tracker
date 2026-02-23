@@ -3731,7 +3731,11 @@ function renderCadencePlanner() {
     const container = document.getElementById('cadence-planner');
     if (!container) return;
 
-    const areas = ['Planning', 'Buying', 'Receiving', 'Warehouse', 'Logistics', 'Supplier Quality', 'Scheduling'];
+    // Use SC Areas if defined, otherwise fall back to defaults
+    const scAreaNames = (app.data.scAreas || []).map(a => a.name).filter(Boolean);
+    const areas = scAreaNames.length > 0
+        ? scAreaNames
+        : ['Planning', 'Buying', 'Receiving', 'Warehouse', 'Logistics', 'Supplier Quality', 'Scheduling'];
     const today = new Date();
 
     const html = areas.map(area => {

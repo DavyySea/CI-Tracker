@@ -681,6 +681,58 @@ select.form-control {
     border-radius: var(--radius-sm);
 }
 
+/* Dashboard stat strip */
+.dashboard-stat-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.dash-stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    cursor: default;
+    transition: box-shadow 0.2s;
+}
+
+.dash-stat-card:hover {
+    box-shadow: 0 4px 12px var(--shadow);
+}
+
+.dash-stat-card[onclick] { cursor: pointer; }
+
+.dash-stat-label {
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.dash-stat-value {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1;
+}
+
+.dash-stat-sub {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 2px;
+}
+
+.dash-stat-card.stat-danger  { border-left: 4px solid var(--danger, #ef4444); }
+.dash-stat-card.stat-warning { border-left: 4px solid #eab308; }
+.dash-stat-card.stat-success { border-left: 4px solid var(--success, #22c55e); }
+.dash-stat-card.stat-accent  { border-left: 4px solid var(--accent); }
+
 .summary-stat {
     display: flex;
     flex-direction: column;
