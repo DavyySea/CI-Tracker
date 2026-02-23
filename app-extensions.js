@@ -121,9 +121,10 @@
         }
 
         // Search AARs
-        results.aars = app.data.aars.filter(aar =>
-            aar.title?.toLowerCase().includes(lowerQuery) ||
-            aar.area?.toLowerCase().includes(lowerQuery)
+        results.aars = (app.data.aars || []).filter(aar =>
+            aar.description?.toLowerCase().includes(lowerQuery) ||
+            aar.area?.toLowerCase().includes(lowerQuery) ||
+            aar.incidentType?.toLowerCase().includes(lowerQuery)
         ).slice(0, 5);
 
         renderSearchResults(results);
@@ -620,7 +621,7 @@
         const rootCauseCounts = {};
 
         // From AAR
-        app.data.aars.forEach(aar => {
+        (app.data.aars || []).forEach(aar => {
             if (aar.rootCauseCategory) {
                 rootCauseCounts[aar.rootCauseCategory] = (rootCauseCounts[aar.rootCauseCategory] || 0) + 1;
             }

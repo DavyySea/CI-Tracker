@@ -37,6 +37,8 @@ document.addEventListener('DOMContentLoaded', () => {
 function saveData() {
     try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(app.data));
+        // Keep nav badges in sync after every save
+        if (typeof updateNavigationBadges === 'function') updateNavigationBadges();
         return true;
     } catch (e) {
         console.error('Failed to save data:', e);
@@ -1008,12 +1010,12 @@ function renderThisWeekPanel() {
     const updatesDue = [];
 
     app.data.projects.forEach(project => {
-        project.actions.forEach(action => {
+        (project.actions || []).forEach(action => {
             if (action.status !== 'Done') {
                 if (isOverdue(action.dueDate)) {
-                    overdueActions.push({ ...action, projectTitle: project.title });
+                    overdueActions.push({ ...action, projectTitle: project.title, projectId: project.id });
                 } else if (isDateInRange(action.dueDate, 7)) {
-                    dueSoonActions.push({ ...action, projectTitle: project.title });
+                    dueSoonActions.push({ ...action, projectTitle: project.title, projectId: project.id });
                 }
             }
         });
@@ -1029,10 +1031,11 @@ function renderThisWeekPanel() {
         html += '<div class="week-section"><h3>Overdue Actions</h3>';
         overdueActions.forEach(action => {
             html += `
-                <div class="action-item overdue">
-                    <div class="action-text">${action.text}</div>
+                <div class="action-item overdue" style="cursor:pointer;"
+                     onclick="navigateToPage('projects'); setTimeout(() => showProjectDetailModal('${action.projectId}'), 100);">
+                    <div class="action-text">${escapeHtml(action.text)}</div>
                     <div class="action-meta">
-                        ${action.projectTitle} • ${action.owner} • Due: ${action.dueDate}
+                        ${escapeHtml(action.projectTitle)} • ${escapeHtml(action.owner || '')} • Due: ${action.dueDate}
                     </div>
                 </div>
             `;
@@ -1044,10 +1047,11 @@ function renderThisWeekPanel() {
         html += '<div class="week-section"><h3>Due This Week</h3>';
         dueSoonActions.forEach(action => {
             html += `
-                <div class="action-item due-soon">
-                    <div class="action-text">${action.text}</div>
+                <div class="action-item due-soon" style="cursor:pointer;"
+                     onclick="navigateToPage('projects'); setTimeout(() => showProjectDetailModal('${action.projectId}'), 100);">
+                    <div class="action-text">${escapeHtml(action.text)}</div>
                     <div class="action-meta">
-                        ${action.projectTitle} • ${action.owner} • Due: ${action.dueDate}
+                        ${escapeHtml(action.projectTitle)} • ${escapeHtml(action.owner || '')} • Due: ${action.dueDate}
                     </div>
                 </div>
             `;
@@ -1059,8 +1063,9 @@ function renderThisWeekPanel() {
         html += '<div class="week-section"><h3>Project Updates Due</h3>';
         updatesDue.forEach(project => {
             html += `
-                <div class="action-item">
-                    <div class="action-text">${project.title}</div>
+                <div class="action-item" style="cursor:pointer;"
+                     onclick="navigateToPage('projects'); setTimeout(() => showProjectDetailModal('${project.id}'), 100);">
+                    <div class="action-text">${escapeHtml(project.title)}</div>
                     <div class="action-meta">Next update: ${project.nextUpdateDate}</div>
                 </div>
             `;
@@ -3266,7 +3271,7 @@ function renderProcessLibrary() {
         const needsReview = daysSinceReview > 90;
 
         return `
-            <div class="process-card" data-process-id="${proc.id}">
+            <div class="process-card" data-process-id="${proc.id}" style="cursor:pointer;" onclick="showProcessDetailModal('${proc.id}')">
                 <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
                     <div>
                         <div style="font-weight: 600; font-size: 15px; margin-bottom: 4px;">
@@ -3730,7 +3735,8 @@ function renderCadencePlanner() {
     const today = new Date();
 
     const html = areas.map(area => {
-        const areaMeetings = app.data.meetings.filter(m => m.area === area).sort((a, b) => b.dateTime.localeCompare(a.dateTime));
+        const areaMeetings = app.data.meetings.filter(m => m.section === area || m.area === area)
+            .sort((a, b) => (b.date || b.dateTime || '').localeCompare(a.date || a.dateTime || ''));
         const lastMeeting = areaMeetings[0];
         const nextMeetingDate = lastMeeting?.nextMeetingDate || '';
 
@@ -3773,15 +3779,16 @@ function renderMeetingList() {
     const container = document.getElementById('meeting-list');
     if (!container) return;
 
-    const sortedMeetings = [...app.data.meetings].sort((a, b) => b.dateTime.localeCompare(a.dateTime));
+    const sortedMeetings = [...app.data.meetings].sort((a, b) =>
+        (b.date || b.dateTime || '').localeCompare(a.date || a.dateTime || ''));
 
     const html = sortedMeetings.map(meeting => {
         return `
             <div class="meeting-card" data-meeting-id="${meeting.id}">
                 <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
                     <div>
-                        <div style="font-weight: 600; font-size: 15px;">${meeting.area} - ${meeting.dateTime}</div>
-                        <div style="font-size: 13px; color: var(--gray-600);">Attendees: ${meeting.attendees}</div>
+                        <div style="font-weight: 600; font-size: 15px;">${escapeHtml(meeting.title || meeting.area || 'Meeting')} — ${meeting.date || meeting.dateTime || ''}</div>
+                        <div style="font-size: 13px; color: var(--gray-600);">Attendees: ${escapeHtml(meeting.attendees || '')}</div>
                     </div>
                 </div>
                 <div style="font-size: 13px; color: var(--gray-700); margin-bottom: 8px;">
@@ -4098,6 +4105,53 @@ function exportData() {
     showToast('Data exported successfully');
 }
 
+function exportCSV() {
+    function csvRow(fields) {
+        return fields.map(f => {
+            const s = (f === null || f === undefined) ? '' : String(f);
+            return '"' + s.replace(/"/g, '""') + '"';
+        }).join(',');
+    }
+    function downloadCSV(filename, rows) {
+        const csv = rows.join('\r\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = filename; a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    const date = formatDate(new Date());
+
+    // Projects CSV
+    const projRows = [csvRow(['Title','Area','Owner','Status','Health','Priority','Due Date','Open Actions','Expected Impact'])];
+    (app.data.projects || []).forEach(p => {
+        const open = (p.actions || []).filter(a => a.status !== 'Done').length;
+        projRows.push(csvRow([p.title, p.area, p.owner, p.status, p.health, p.priority, p.dueDate, open, p.expectedImpact]));
+    });
+    downloadCSV(`ci_projects_${date}.csv`, projRows);
+
+    // Issues CSV
+    setTimeout(() => {
+        const issueRows = [csvRow(['Title','Section','Severity','Type','Status','Owner','Next Action','Due Date','Cost Impact'])];
+        (app.data.issues || []).forEach(i => {
+            issueRows.push(csvRow([i.title, i.section, i.severity, i.type, i.status, i.owner, i.nextAction, i.nextActionDueDate, i.impact?.costUSD || '']));
+        });
+        downloadCSV(`ci_issues_${date}.csv`, issueRows);
+    }, 300);
+
+    // Meetings CSV
+    setTimeout(() => {
+        const meetRows = [csvRow(['Title','Date','Section','Type','Location','Attendees'])];
+        (app.data.meetings || []).forEach(m => {
+            meetRows.push(csvRow([m.title, m.date, m.section, m.type, m.location, m.attendees]));
+        });
+        downloadCSV(`ci_meetings_${date}.csv`, meetRows);
+    }, 600);
+
+    showToast('Exported 3 CSV files (projects, issues, meetings)', 'success');
+}
+
 function importDataPrompt() {
     const input = document.createElement('input');
     input.type = 'file';
@@ -4164,6 +4218,7 @@ function quickCreateMeeting() {
 // Wire up global functions
 window.quickCreateIssue  = quickCreateIssue;
 window.quickCreateMeeting = quickCreateMeeting;
+app.exportCSV = exportCSV;
 window.showProcessDetailModal = showProcessDetailModal;
 window.createProcess = createProcess;
 window.editProcess = editProcess;
