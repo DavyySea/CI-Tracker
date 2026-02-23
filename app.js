@@ -1642,7 +1642,7 @@ function renderProjects() {
 
 // Create Project Modal
 function showCreateProjectModal() {
-    const kpiOptions = app.data.kpis.map(kpi =>
+    const kpiOptions = (app.data.kpis || []).map(kpi =>
         `<option value="${kpi.id}">${kpi.name}</option>`
     ).join('');
 
@@ -3247,7 +3247,7 @@ function renderProcessLibrary() {
 
 // Create Process Modal
 function showCreateProcessModal() {
-    const kpiOptions = app.data.kpis.map(kpi =>
+    const kpiOptions = (app.data.kpis || []).map(kpi =>
         `<option value="${kpi.id}">${kpi.name}</option>`
     ).join('');
 
