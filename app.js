@@ -126,9 +126,9 @@ function updateThemeButton(theme) {
 }
 
 // Initialize app on page load
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', () => {
     initTheme();
-    await loadData();
+    loadData();
     initFileBackup();
     initNavigation();
     renderCurrentPage();
@@ -179,7 +179,7 @@ function _checkDailyBackup(json) {
     } catch(e) {}
 }
 
-async function loadData() {
+function loadData() {
     try {
         const stored = localStorage.getItem(STORAGE_KEY);
         let parsed = null;
@@ -204,11 +204,10 @@ async function loadData() {
             showToast('Data restored from backup' + (ts ? ' (' + new Date(ts).toLocaleDateString() + ')' : ''), 'success');
             return;
         }
-        // Nothing saved yet — load default data, fall back to seed
-        try {
-            const r = await fetch('default-data.json');
-            app.data = await r.json();
-        } catch(e) {
+        // Nothing saved yet — use embedded default data, fall back to seed
+        if (window._defaultData) {
+            app.data = window._defaultData;
+        } else {
             seedSampleData();
         }
         saveData();
