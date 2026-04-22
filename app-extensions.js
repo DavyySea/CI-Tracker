@@ -17,6 +17,8 @@
     if (!app.data.auditLog) app.data.auditLog = [];
     if (!app.data.products) app.data.products = [];
     if (!app.data.areaImprovements) app.data.areaImprovements = [];
+    if (!app.data.tickets) app.data.tickets = [];
+    if (!app.data.suppliers) app.data.suppliers = [];
 
     // Store original saveData to wrap it
     const originalSaveData = window.saveData;
@@ -27,6 +29,8 @@
         if (!app.data.auditLog) app.data.auditLog = [];
         if (!app.data.products) app.data.products = [];
         if (!app.data.areaImprovements) app.data.areaImprovements = [];
+        if (!app.data.tickets) app.data.tickets = [];
+        if (!app.data.suppliers) app.data.suppliers = [];
         return originalSaveData();
     };
 
@@ -38,6 +42,7 @@
     }
 
     function initExtensions() {
+        _seedFastenal();
         initGlobalSearch();
         initKeyboardShortcuts();
         initQuickCreateButtons();
@@ -203,7 +208,7 @@
             results.issues.forEach(issue => {
                 html += `
                     <div class="search-result-item" onclick="app.viewIssueDetail('${issue.id}')">
-                        <div class="search-result-icon">🎯</div>
+                        <div class="search-result-icon"></div>
                         <div class="search-result-content">
                             <div class="search-result-title">${escapeHtml(issue.title)}</div>
                             <div class="search-result-meta">${issue.section || 'No section'} • ${issue.severity || 'No severity'}</div>
@@ -220,7 +225,7 @@
             results.projects.forEach(proj => {
                 html += `
                     <div class="search-result-item" onclick="navigateToPage('projects'); app.viewProjectDetail('${proj.id}');">
-                        <div class="search-result-icon">📋</div>
+                        <div class="search-result-icon"></div>
                         <div class="search-result-content">
                             <div class="search-result-title">${escapeHtml(proj.title)}</div>
                             <div class="search-result-meta">${proj.area || 'No area'} • ${proj.status || 'No status'}</div>
@@ -237,7 +242,7 @@
             results.meetings.forEach(meeting => {
                 html += `
                     <div class="search-result-item" onclick="app.viewMeetingDetail('${meeting.id}')">
-                        <div class="search-result-icon">🗓️</div>
+                        <div class="search-result-icon"></div>
                         <div class="search-result-content">
                             <div class="search-result-title">${escapeHtml(meeting.title || 'Untitled Meeting')}</div>
                             <div class="search-result-meta">${meeting.section || 'No section'} • ${meeting.date || 'No date'}</div>
@@ -254,7 +259,7 @@
             results.aars.forEach(aar => {
                 html += `
                     <div class="search-result-item" onclick="navigateToPage('aar');">
-                        <div class="search-result-icon">📝</div>
+                        <div class="search-result-icon"></div>
                         <div class="search-result-content">
                             <div class="search-result-title">${escapeHtml(aar.description || aar.incidentType || 'AAR')}</div>
                             <div class="search-result-meta">${aar.area || 'No area'} • ${aar.incidentType || ''}</div>
@@ -271,7 +276,7 @@
             results.contacts.forEach(c => {
                 html += `
                     <div class="search-result-item" onclick="navigateToPage('contacts');">
-                        <div class="search-result-icon">👤</div>
+                        <div class="search-result-icon"></div>
                         <div class="search-result-content">
                             <div class="search-result-title">${escapeHtml(c.name)}</div>
                             <div class="search-result-meta">${c.title ? escapeHtml(c.title) + ' · ' : ''}${c.company ? escapeHtml(c.company) : c.email ? escapeHtml(c.email) : ''}</div>
@@ -312,8 +317,8 @@
                 }
             }
 
-            // Don't trigger shortcuts if typing in input
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+            // Don't trigger shortcuts if typing in input or rich-text editor
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) {
                 return;
             }
 
@@ -402,6 +407,33 @@
             meetingsTodayBadge.textContent = todayCount;
             meetingsTodayBadge.style.display = todayCount > 0 ? 'inline-block' : 'none';
         }
+
+        // Tickets badge - count New tickets
+        const ticketsNewBadge = document.getElementById('ticketsNewBadge');
+        if (ticketsNewBadge && app.data.tickets) {
+            const newCount = app.data.tickets.filter(t => t.status === 'New').length;
+            ticketsNewBadge.textContent = newCount;
+            ticketsNewBadge.style.display = newCount > 0 ? 'inline-block' : 'none';
+        }
+
+        // Cost Analysis badge - expired + expiring RFQs
+        const costAnalysisBadge = document.getElementById('costAnalysisBadge');
+        if (costAnalysisBadge && app.data.costAnalysis) {
+            const today = new Date(); today.setHours(0,0,0,0);
+            const soonMs = 30 * 24 * 60 * 60 * 1000;
+            let riskCount = 0;
+            (app.data.costAnalysis.parts || []).forEach(p => {
+                const rfqs = p.rfqs || [];
+                if (rfqs.length === 0) return;
+                const best = rfqs.reduce((b, r) => (!b || Number(r.unitCost) < Number(b.unitCost)) ? r : b, null);
+                if (best && best.validUntil) {
+                    const d = new Date(best.validUntil);
+                    if (d < today || (d - today) <= soonMs) riskCount++;
+                }
+            });
+            costAnalysisBadge.textContent = riskCount;
+            costAnalysisBadge.style.display = riskCount > 0 ? 'inline-block' : 'none';
+        }
     }
 
     // Expose update function
@@ -413,10 +445,13 @@
         renderOverdueActionsWidget();
         renderIssuesTriageWidget();
         renderUpcomingFollowupsWidget();
+        renderTicketsNewWidget();
         renderIssuesStatusWidget();
         renderIssuesSeverityWidget();
         renderProjectsStageWidget();
         renderProjectsHealthWidget();
+        renderGoalTrackingWidget();
+        renderRecurringIssuesWidget();
         renderRootCauseParetoWidget();
         renderRecentActivityWidget();
     }
@@ -457,6 +492,24 @@
             if (a.status !== 'Done') openActions++;
         }));
 
+        // Phase 6: Action Item Velocity
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        const recentlyClosed = issues.filter(i => {
+            if (i.status !== 'Closed') return false;
+            const closeTs = i.lastUpdated || i.closedDate;
+            return closeTs && new Date(closeTs) >= thirtyDaysAgo;
+        });
+        const closedThisMonth = recentlyClosed.length;
+        let avgCloseDays = '—';
+        if (recentlyClosed.length > 0) {
+            const diffs = recentlyClosed.filter(i => i.createdAt && (i.lastUpdated || i.closedDate)).map(i => {
+                const open = new Date(i.createdAt);
+                const close = new Date(i.lastUpdated || i.closedDate);
+                return (close - open) / (1000 * 60 * 60 * 24);
+            }).filter(d => d >= 0);
+            if (diffs.length > 0) avgCloseDays = (diffs.reduce((a, b) => a + b, 0) / diffs.length).toFixed(1);
+        }
+
         const stats = [
             {
                 label: 'Open Issues',
@@ -491,6 +544,27 @@
                 value: openActions,
                 sub: 'across all projects',
                 cls: '',
+                nav: 'projects'
+            },
+            {
+                label: 'Closed This Month',
+                value: closedThisMonth,
+                sub: 'issues closed (30d)',
+                cls: closedThisMonth > 0 ? 'stat-success' : '',
+                nav: 'issues'
+            },
+            {
+                label: 'Avg Close Time',
+                value: avgCloseDays === '—' ? '—' : avgCloseDays + 'd',
+                sub: 'days open→closed (30d)',
+                cls: '',
+                nav: 'issues'
+            },
+            {
+                label: 'Escalated',
+                value: projects.filter(p => p.createdFromIssueId).length || 0,
+                sub: 'issues → projects',
+                cls: 'stat-accent',
                 nav: 'projects'
             }
         ];
@@ -550,7 +624,7 @@
         }
 
         if (overdueActions.length === 0) {
-            container.innerHTML = '<div class="widget-empty">✓ No overdue actions</div>';
+            container.innerHTML = '<div class="widget-empty">No overdue actions</div>';
             return;
         }
 
@@ -582,7 +656,7 @@
         );
 
         if (needsTriage.length === 0) {
-            container.innerHTML = '<div class="widget-empty">✓ No issues need triage</div>';
+            container.innerHTML = '<div class="widget-empty">No issues need triage</div>';
             return;
         }
 
@@ -677,6 +751,41 @@
         });
         if (upcoming.length > 5) {
             html += `<div class="widget-item" style="text-align: center; color: var(--muted);">+${upcoming.length - 5} more</div>`;
+        }
+        html += '</div>';
+        container.innerHTML = html;
+    }
+
+    function renderTicketsNewWidget() {
+        const container = document.getElementById('ticketsNewWidget');
+        if (!container) return;
+
+        const newTickets = (app.data.tickets || []).filter(t => t.status === 'New');
+
+        if (newTickets.length === 0) {
+            container.innerHTML = '<div class="widget-empty">No new requests</div>';
+            return;
+        }
+
+        // Sort by priority then submitted date
+        const priWeight = { Urgent: 4, High: 3, Medium: 2, Low: 1 };
+        newTickets.sort((a, b) => (priWeight[b.priority] || 0) - (priWeight[a.priority] || 0));
+
+        let html = '<div class="widget-list">';
+        newTickets.slice(0, 5).forEach(t => {
+            const priCls = { Low: 'priority-low', Medium: 'priority-med', High: 'priority-high', Urgent: 'priority-urgent' }[t.priority] || '';
+            html += `
+                <div class="widget-item" style="cursor:pointer;" onclick="navigateToPage('tickets'); window._tickets && window._tickets.showDetail('${t.id}');">
+                    <div>
+                        <strong>${escapeHtml(t.ticketNumber)}</strong> ${escapeHtml((t.title || '').substring(0, 35))}${(t.title || '').length > 35 ? '…' : ''}<br>
+                        <small>${escapeHtml(t.requesterName || 'Unknown')}</small>
+                    </div>
+                    <span class="status-badge ${priCls}" style="font-size:11px;">${escapeHtml(t.priority)}</span>
+                </div>
+            `;
+        });
+        if (newTickets.length > 5) {
+            html += `<div class="widget-item" style="text-align:center;color:var(--muted);">+${newTickets.length - 5} more</div>`;
         }
         html += '</div>';
         container.innerHTML = html;
@@ -856,13 +965,13 @@
 
     function getActivityIcon(action) {
         const icons = {
-            'create': '➕',
-            'update': '✏️',
-            'delete': '🗑️',
-            'close': '✅',
-            'reopen': '🔄'
+            'create': '+',
+            'update': 'edit',
+            'delete': 'delete',
+            'close': 'close',
+            'reopen': 'reopen'
         };
-        return icons[action] || '📝';
+        return icons[action] || '';
     }
 
     function formatTimeAgo(date) {
@@ -881,6 +990,341 @@
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    // ─── Goal Tracking Widget ─────────────────────────────────────────────────
+
+    function renderGoalTrackingWidget() {
+        if (!app.data.goals) app.data.goals = [];
+
+        const container = document.getElementById('goalTrackingWidget');
+        if (!container) return;
+
+        const now = new Date();
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+        const issues = app.data.issues || [];
+        const projects = app.data.projects || [];
+
+        function computeCurrent(unit) {
+            const u = (unit || '').toLowerCase();
+            if (u.indexOf('issue') !== -1) {
+                return issues.filter(i => i.status === 'Closed' && (i.lastUpdated || i.closedDate || '') >= monthStart).length;
+            }
+            if (u.indexOf('action') !== -1) {
+                let count = 0;
+                projects.forEach(p => (p.actions || []).forEach(a => {
+                    if (a.status === 'Done' && (a.completedAt || a.dueDate || '') >= monthStart) count++;
+                }));
+                return count;
+            }
+            if (u.indexOf('meeting') !== -1) {
+                return (app.data.meetings || []).filter(m => (m.date || '') >= monthStart).length;
+            }
+            return 0;
+        }
+
+        const goals = app.data.goals;
+
+        let html = '<div class="goals-widget">';
+
+        if (goals.length === 0) {
+            html += '<div class="widget-empty">No goals set. Add one to start tracking progress.</div>';
+        } else {
+            goals.forEach(g => {
+                const current = computeCurrent(g.unit);
+                const target = g.target || 1;
+                const pct = Math.min(100, Math.round((current / target) * 100));
+                html += `
+                <div class="goal-item">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <span style="font-size:13px;font-weight:500;">${escapeHtml(g.title)}</span>
+                        <button onclick="app.deleteGoal('${g.id}')" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:14px;padding:0 2px;" title="Delete goal">x</button>
+                    </div>
+                    <div class="goal-progress-bar">
+                        <div class="goal-progress-fill" style="width:${pct}%"></div>
+                    </div>
+                    <div class="goal-meta">
+                        <span>${current} / ${target} ${escapeHtml(g.unit)}</span>
+                        <span>${g.deadline ? 'Due ' + g.deadline : ''}</span>
+                    </div>
+                </div>`;
+            });
+        }
+
+        html += '</div>';
+        container.innerHTML = html;
+    }
+
+    app.showAddGoalModal = function() {
+        const existing = document.getElementById('addGoalModal');
+        if (existing) existing.remove();
+
+        const modal = document.createElement('div');
+        modal.id = 'addGoalModal';
+        modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;';
+        modal.innerHTML = `
+            <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:24px;width:360px;max-width:90vw;">
+                <h3 style="margin:0 0 16px;font-size:16px;">Add Monthly Goal</h3>
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                    <input id="goalTitleInput" type="text" placeholder="Goal title (e.g. Close 10 issues)" style="background:var(--surface-3);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:8px 10px;font-size:13px;">
+                    <input id="goalTargetInput" type="number" min="1" placeholder="Target number" style="background:var(--surface-3);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:8px 10px;font-size:13px;">
+                    <input id="goalUnitInput" type="text" placeholder='Unit (e.g. "issues closed", "meetings")' style="background:var(--surface-3);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:8px 10px;font-size:13px;">
+                    <input id="goalDeadlineInput" type="date" style="background:var(--surface-3);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:8px 10px;font-size:13px;">
+                </div>
+                <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end;">
+                    <button onclick="document.getElementById('addGoalModal').remove()" style="background:var(--surface-3);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px 14px;cursor:pointer;font-size:13px;">Cancel</button>
+                    <button onclick="app.addGoal()" style="background:var(--accent);border:none;color:#000;border-radius:6px;padding:7px 14px;cursor:pointer;font-size:13px;font-weight:600;">Save Goal</button>
+                </div>
+            </div>`;
+        document.body.appendChild(modal);
+        document.getElementById('goalTitleInput').focus();
+    };
+
+    app.addGoal = function() {
+        const title = (document.getElementById('goalTitleInput') || {}).value || '';
+        const target = parseInt((document.getElementById('goalTargetInput') || {}).value || '0', 10);
+        const unit = (document.getElementById('goalUnitInput') || {}).value || '';
+        const deadline = (document.getElementById('goalDeadlineInput') || {}).value || '';
+
+        if (!title.trim()) { showToast('Please enter a goal title', 'error'); return; }
+        if (!target || target < 1) { showToast('Please enter a valid target number', 'error'); return; }
+        if (!unit.trim()) { showToast('Please enter a unit', 'error'); return; }
+
+        if (!app.data.goals) app.data.goals = [];
+        app.data.goals.push({
+            id: generateId(),
+            title: title.trim(),
+            target: target,
+            unit: unit.trim(),
+            deadline: deadline,
+            createdAt: new Date().toISOString()
+        });
+        saveData();
+
+        const modal = document.getElementById('addGoalModal');
+        if (modal) modal.remove();
+
+        renderGoalTrackingWidget();
+        showToast('Goal added');
+    };
+
+    app.deleteGoal = function(id) {
+        if (!app.data.goals) return;
+        app.data.goals = app.data.goals.filter(g => g.id !== id);
+        saveData();
+        renderGoalTrackingWidget();
+        showToast('Goal removed');
+    };
+
+    // ─── Phase 5: Recurring Issues Widget ────────────────────────────────────
+
+    function renderRecurringIssuesWidget() {
+        const container = document.getElementById('recurringIssuesWidget');
+        if (!container) return;
+        const issues = app.data.issues || [];
+        // Group by (rootCauseCategory, first productId or '')
+        const groups = {};
+        issues.forEach(i => {
+            const rc = i.rootCauseCategory || 'Unknown';
+            const prod = (i.productIds && i.productIds.length > 0)
+                ? ((app.data.products || []).find(p => p.id === i.productIds[0]) || {}).name || i.productIds[0]
+                : 'General';
+            const key = rc + '||' + prod;
+            if (!groups[key]) groups[key] = { rootCause: rc, product: prod, issues: [] };
+            groups[key].issues.push(i);
+        });
+        const recurring = Object.values(groups)
+            .filter(g => g.issues.length >= 3)
+            .sort((a, b) => b.issues.length - a.issues.length)
+            .slice(0, 5);
+        if (recurring.length === 0) {
+            container.innerHTML = '<p class="muted" style="font-size:13px;">No recurring patterns detected (need 3+ issues with same root cause).</p>';
+            return;
+        }
+        container.innerHTML = recurring.map(g => {
+            const open = g.issues.filter(i => i.status !== 'Closed').length;
+            const rc = escapeHtml(g.rootCause); const prod = escapeHtml(g.product);
+            return '<div class="recurrence-row" onclick="navigateToPage(\'issues\')" title="Click to view Issues page">' +
+                '<div>' +
+                '<div style="font-size:13px;font-weight:600;">' + rc + '</div>' +
+                '<div style="font-size:11px;color:var(--text-muted);">' + prod + ' · ' + open + ' open</div>' +
+                '</div>' +
+                '<span class="recurrence-count">' + g.issues.length + 'x</span>' +
+                '</div>';
+        }).join('');
+    }
+
+    // ─── Phase 9: Monthly CI Report ───────────────────────────────────────────
+
+    function showMonthlyReportModal() {
+        const now = new Date();
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        const fmt = d => new Date(d).toLocaleDateString();
+        const issues = app.data.issues || [];
+        const projects = app.data.projects || [];
+        const meetings = app.data.meetings || [];
+
+        // Issues opened vs closed in last 30d
+        const recentOpened = issues.filter(i => i.createdAt && new Date(i.createdAt) >= thirtyDaysAgo);
+        const recentClosed = issues.filter(i => i.status === 'Closed' && i.lastUpdated && new Date(i.lastUpdated) >= thirtyDaysAgo);
+
+        // Meetings held
+        const recentMeetings = meetings.filter(m => {
+            const d = m.date || m.dateTime || '';
+            return d && new Date(d) >= thirtyDaysAgo && new Date(d) <= now;
+        });
+
+        // Action items closed (from projects)
+        let actionsClosed = 0;
+        projects.forEach(p => (p.actions || []).forEach(a => {
+            if (a.status === 'Done' && a.completedDate && new Date(a.completedDate) >= thirtyDaysAgo) actionsClosed++;
+        }));
+
+        // RFQs awarded this month (by negotiationStage)
+        let rfqsAwarded = 0; let savingsAwarded = 0;
+        (app.data.costAnalysis && app.data.costAnalysis.parts || []).forEach(p => {
+            (p.rfqs || []).forEach(r => {
+                if (r.negotiationStage === 'Awarded') {
+                    rfqsAwarded++;
+                    savingsAwarded += ((Number(p.currentUnitCost) || 0) - (Number(r.unitCost) || 0)) * (Number(p.qpb) || 1);
+                }
+            });
+        });
+
+        // Severity breakdown
+        const sevCounts = { Critical: 0, High: 0, Med: 0, Low: 0 };
+        recentOpened.forEach(i => { if (sevCounts[i.severity] !== undefined) sevCounts[i.severity]++; });
+
+        // Recurring root causes
+        const rcGroups = {};
+        issues.forEach(i => { const rc = i.rootCauseCategory || 'Unknown'; rcGroups[rc] = (rcGroups[rc] || 0) + 1; });
+        const topRC = Object.entries(rcGroups).sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+        // Projects advanced (status changed recently - approximate by lastUpdated)
+        const advancedProjects = projects.filter(p => p.lastUpdated && new Date(p.lastUpdated) >= thirtyDaysAgo && p.status !== 'New');
+
+        const kpiRow = (label, val) =>
+            '<div class="report-kpi-card"><div class="report-kpi-val">' + val + '</div><div class="report-kpi-lbl">' + label + '</div></div>';
+
+        const html = '<div class="modal-overlay" id="monthlyReportModal">' +
+            '<div class="modal modal-wide">' +
+            '<div class="modal-header"><h2>Monthly CI Report — ' + fmt(thirtyDaysAgo) + ' to ' + fmt(now) + '</h2>' +
+            '<button class="modal-close" onclick="document.getElementById(\'monthlyReportModal\').remove()">&times;</button></div>' +
+            '<div class="modal-body report-modal-body">' +
+
+            '<div class="report-section">' +
+            '<div class="report-section-title">Summary KPIs</div>' +
+            '<div class="report-kpi-row">' +
+            kpiRow('Issues Opened', recentOpened.length) +
+            kpiRow('Issues Closed', recentClosed.length) +
+            kpiRow('Meetings Held', recentMeetings.length) +
+            kpiRow('Actions Closed', actionsClosed) +
+            kpiRow('RFQs Awarded', rfqsAwarded) +
+            (savingsAwarded > 0 ? kpiRow('Savings Captured', '$' + savingsAwarded.toFixed(0)) : '') +
+            '</div></div>' +
+
+            '<div class="report-section">' +
+            '<div class="report-section-title">Issues Opened by Severity</div>' +
+            '<table class="report-table"><thead><tr><th>Severity</th><th>Count</th></tr></thead><tbody>' +
+            Object.entries(sevCounts).map(([sev, n]) => '<tr><td>' + sev + '</td><td>' + n + '</td></tr>').join('') +
+            '</tbody></table></div>' +
+
+            '<div class="report-section">' +
+            '<div class="report-section-title">Projects Advanced</div>' +
+            (advancedProjects.length === 0 ? '<p class="muted">No projects updated this period.</p>' :
+            '<table class="report-table"><thead><tr><th>Project</th><th>Status</th><th>Health</th></tr></thead><tbody>' +
+            advancedProjects.map(p => '<tr><td>' + escapeHtml(p.title) + '</td><td>' + escapeHtml(p.status || '') + '</td><td>' + escapeHtml(p.health || '') + '</td></tr>').join('') +
+            '</tbody></table>') + '</div>' +
+
+            '<div class="report-section">' +
+            '<div class="report-section-title">Top Root Causes (All Time)</div>' +
+            '<table class="report-table"><thead><tr><th>Root Cause</th><th>Issues</th></tr></thead><tbody>' +
+            topRC.map(([rc, n]) => '<tr><td>' + escapeHtml(rc) + '</td><td>' + n + '</td></tr>').join('') +
+            '</tbody></table></div>' +
+
+            '</div>' +
+            '<div class="modal-footer">' +
+            '<button class="btn btn-secondary" onclick="window.print()">Print</button>' +
+            '<button class="btn btn-secondary" onclick="window._copyReportMarkdown()">Copy Markdown</button>' +
+            '<button class="btn btn-secondary" onclick="document.getElementById(\'monthlyReportModal\').remove()">Close</button>' +
+            '</div></div></div>';
+
+        document.body.insertAdjacentHTML('beforeend', html);
+    }
+
+    window._copyReportMarkdown = function() {
+        const body = document.querySelector('#monthlyReportModal .modal-body');
+        if (!body) return;
+        const text = body.innerText;
+        navigator.clipboard.writeText(text).then(() => showToast('Report copied to clipboard')).catch(() => showToast('Copy failed', 'error'));
+    };
+
+    window.showMonthlyReportModal = showMonthlyReportModal;
+
+    // ── Fastenal seed ────────────────────────────────────────────────────────
+    function _seedFastenal() {
+        if (app.data._fastenalSeeded) return;
+        app.data._fastenalSeeded = true;
+
+        // Add supplier record
+        if (!app.data.suppliers) app.data.suppliers = [];
+        var alreadySupplier = app.data.suppliers.find(function(s) {
+            return s.name.toLowerCase() === 'fastenal';
+        });
+        if (!alreadySupplier) {
+            app.data.suppliers.push({
+                id: generateId(),
+                name: 'Fastenal',
+                supplierType: 'service',
+                contactName: '',
+                contactEmail: '',
+                contactPhone: '',
+                commodity: 'Fasteners / Hardware / MRO',
+                notes: 'Hardware/MRO distributor. Primary commodity: fasteners (bolts, nuts, screws, washers, pins). Engaged for hardware supply program.',
+                tags: ['Hardware', 'MRO', 'Fasteners'],
+                quality: 0,
+                delivery: 0,
+                responsiveness: 0,
+                price: 0
+            });
+        }
+
+        // Add project
+        if (!app.data.projects) app.data.projects = [];
+        var alreadyProject = app.data.projects.find(function(p) {
+            return p.title && p.title.toLowerCase().indexOf('fastenal') !== -1;
+        });
+        if (!alreadyProject) {
+            app.data.projects.push({
+                id: generateId(),
+                title: 'Fastenal Hardware Supply Program',
+                area: 'Procurement',
+                problemStatement: 'Evaluate and establish a formal hardware supply agreement with Fastenal to consolidate fastener/MRO sourcing, reduce per-part costs, and improve supply reliability across hardware commodity parts.',
+                impactedKPIs: [],
+                owner: '',
+                stakeholders: 'Procurement, Engineering',
+                startDate: '2026-03-26',
+                dueDate: '',
+                status: 'Define',
+                health: 'On Track',
+                priority: 'Medium',
+                expectedImpact: '',
+                actualImpact: '',
+                lastUpdated: '2026-03-26',
+                nextUpdateDate: '',
+                actions: [],
+                links: [],
+                notes: ''
+            });
+        }
+
+        // Ensure supplierType is set on Fastenal (migration for existing records)
+        var fastenalRec = app.data.suppliers.find(function(s) { return s.name === 'Fastenal'; });
+        if (fastenalRec && !fastenalRec.supplierType) {
+            fastenalRec.supplierType = 'service';
+        }
+
+        saveData();
     }
 
     // Expose enhanced dashboard render

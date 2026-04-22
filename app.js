@@ -2,8 +2,85 @@
    app.js — PART 1/6
    ========================= */
 
-// Storage key
+// Storage keys
 const STORAGE_KEY = 'sc_ci_tracker_v1';
+const BACKUP_KEY = 'sc_ci_tracker_backup_v1';
+const BACKUP_TS_KEY = 'sc_ci_tracker_backup_ts';
+
+// File System backup — persists file handle in IndexedDB
+let _fileBackupHandle = null;
+
+function _openBackupDB() {
+    return new Promise((resolve, reject) => {
+        const req = indexedDB.open('ci_tracker_fs', 1);
+        req.onupgradeneeded = e => e.target.result.createObjectStore('handles');
+        req.onsuccess = e => resolve(e.target.result);
+        req.onerror = () => reject();
+    });
+}
+
+async function initFileBackup() {
+    try {
+        const db = await _openBackupDB();
+        const tx = db.transaction('handles', 'readonly');
+        const req = tx.objectStore('handles').get('backup');
+        req.onsuccess = async () => {
+            if (!req.result) return;
+            const perm = await req.result.requestPermission({ mode: 'readwrite' });
+            if (perm === 'granted') {
+                _fileBackupHandle = req.result;
+                _updateBackupStatus(true, req.result.name);
+            }
+        };
+    } catch(e) {}
+}
+
+async function setupFileBackup() {
+    if (!window.showSaveFilePicker) {
+        showToast('File backup not supported — use Chrome', 'error');
+        return;
+    }
+    try {
+        const handle = await window.showSaveFilePicker({
+            suggestedName: 'ci-tracker-autosave.json',
+            types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }],
+            startIn: 'documents'
+        });
+        _fileBackupHandle = handle;
+        const db = await _openBackupDB();
+        const tx = db.transaction('handles', 'readwrite');
+        tx.objectStore('handles').put(handle, 'backup');
+        await writeFileBackup(JSON.stringify(app.data));
+        _updateBackupStatus(true, handle.name);
+        showToast('File backup linked — every save now writes to ' + handle.name, 'success');
+    } catch(e) {
+        if (e.name !== 'AbortError') showToast('Could not link file backup', 'error');
+    }
+}
+
+async function writeFileBackup(json) {
+    if (!_fileBackupHandle) return;
+    try {
+        const writable = await _fileBackupHandle.createWritable();
+        await writable.write(json);
+        await writable.close();
+    } catch(e) {
+        _fileBackupHandle = null;
+        _updateBackupStatus(false);
+    }
+}
+
+function _updateBackupStatus(active, filename) {
+    const btn = document.querySelector('[onclick="setupFileBackup()"]');
+    if (!btn) return;
+    if (active) {
+        btn.textContent = 'Auto-Save: ' + (filename || 'linked');
+        btn.style.color = '#27ae60';
+    } else {
+        btn.textContent = 'Link Auto-Save File';
+        btn.style.color = '';
+    }
+}
 
 // App state
 const app = {
@@ -19,48 +96,153 @@ const app = {
         contacts: [],
         meetingTypes: [],
         meetingSections: [],
-        scAreas: []
+        scAreas: [],
+        costAnalysis: { boatsPerYear: 12, parts: [] },
+        tickets: []
     },
     currentPage: 'dashboard',
     currentProjectId: null,
     currentDMAICTab: 'define'
 };
 
+// Theme management
+function initTheme() {
+    const saved = localStorage.getItem('theme') || 'saronic';
+    document.documentElement.setAttribute('data-theme', saved);
+    updateThemeButton(saved);
+}
+
+function toggleTheme() {
+    const current = document.documentElement.getAttribute('data-theme');
+    const next = current === 'saronic' ? 'saronic-light' : 'saronic';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+    updateThemeButton(next);
+}
+
+function updateThemeButton(theme) {
+    const btn = document.getElementById('themeToggleBtn');
+    if (btn) btn.textContent = theme === 'saronic' ? 'Light' : 'Dark';
+}
+
 // Initialize app on page load
 document.addEventListener('DOMContentLoaded', () => {
+    initTheme();
     loadData();
+    initFileBackup();
     initNavigation();
     renderCurrentPage();
+    // Live filter-active badge on every filter-select change
+    document.addEventListener('change', e => {
+        if (e.target.classList.contains('filter-select')) {
+            e.target.classList.toggle('filter-active', e.target.selectedIndex > 0);
+        }
+    });
 });
 
 // LocalStorage management
 function saveData() {
     try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(app.data));
+        const json = JSON.stringify(app.data);
+        localStorage.setItem(STORAGE_KEY, json);
+        // Verify the write actually stuck
+        const verify = localStorage.getItem(STORAGE_KEY);
+        if (!verify) throw new Error('localStorage write did not persist');
+        // Rolling backup — written every save
+        localStorage.setItem(BACKUP_KEY, json);
+        localStorage.setItem(BACKUP_TS_KEY, new Date().toISOString());
+        // File system backup
+        writeFileBackup(json);
         // Keep nav badges in sync after every save
         if (typeof updateNavigationBadges === 'function') updateNavigationBadges();
+        // Daily auto-download backup
+        _checkDailyBackup(json);
         return true;
     } catch (e) {
-        console.error('Failed to save data:', e);
-        showToast('Failed to save data', 'error');
+        console.error('[saveData] FAILED:', e);
+        showToast('! Save failed: ' + e.message, 'error');
         return false;
     }
+}
+
+function _checkDailyBackup(json) {
+    try {
+        const lastBackup = localStorage.getItem('sc_ci_daily_backup_date');
+        const today = new Date().toISOString().slice(0, 10);
+        if (lastBackup === today) return;
+        localStorage.setItem('sc_ci_daily_backup_date', today);
+        const a = document.createElement('a');
+        a.href = 'data:application/json,' + encodeURIComponent(json || localStorage.getItem(STORAGE_KEY));
+        a.download = 'ci-tracker-backup-' + today + '.json';
+        a.click();
+        showToast('Daily backup downloaded to your PC', 'success');
+    } catch(e) {}
 }
 
 function loadData() {
     try {
         const stored = localStorage.getItem(STORAGE_KEY);
+        let parsed = null;
         if (stored) {
-            app.data = JSON.parse(stored);
-        } else {
-            // First load - seed sample data
-            seedSampleData();
-            saveData();
+            try { parsed = JSON.parse(stored); } catch(e) {
+                console.warn('Main data corrupted, trying backup:', e);
+            }
         }
+        if (parsed) {
+            app.data = parsed;
+            return;
+        }
+        // Main data missing or corrupt — try backup
+        const backup = localStorage.getItem(BACKUP_KEY);
+        if (backup) {
+            try { parsed = JSON.parse(backup); } catch(e) {}
+        }
+        if (parsed) {
+            app.data = parsed;
+            localStorage.setItem(STORAGE_KEY, backup);
+            const ts = localStorage.getItem(BACKUP_TS_KEY);
+            showToast('Data restored from backup' + (ts ? ' (' + new Date(ts).toLocaleDateString() + ')' : ''), 'success');
+            return;
+        }
+        // Nothing saved yet — seed
+        seedSampleData();
+        saveData();
     } catch (e) {
-        console.error('Failed to load data:', e);
+        console.error('[loadData] FAILED:', e);
         showToast('Failed to load data', 'error');
     }
+}
+
+function exportData() {
+    const json = localStorage.getItem(STORAGE_KEY);
+    if (!json) return;
+    const a = document.createElement('a');
+    a.href = 'data:text/json,' + encodeURIComponent(json);
+    a.download = 'ci-backup-' + new Date().toISOString().slice(0,10) + '.json';
+    a.click();
+    showToast('Backup downloaded', 'success');
+}
+
+function importData() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = function(e) {
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+            try {
+                const parsed = JSON.parse(ev.target.result);
+                app.data = parsed;
+                saveData();
+                renderCurrentPage();
+                showToast('Data restored successfully', 'success');
+            } catch (err) {
+                showToast('Invalid backup file', 'error');
+            }
+        };
+        reader.readAsText(e.target.files[0]);
+    };
+    input.click();
 }
 
 function seedSampleData() {
@@ -750,7 +932,7 @@ function initNavigation() {
     document.addEventListener('keydown', (e) => {
         // Don't fire when typing in inputs
         const tag = document.activeElement?.tagName;
-        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || document.activeElement?.isContentEditable) return;
         // Don't fire when a modal is open
         if (document.querySelector('.modal-overlay')) return;
 
@@ -829,10 +1011,34 @@ function renderCurrentPage() {
         case 'kanban':
             if (typeof renderKanbanBoard === 'function') renderKanbanBoard();
             break;
+        case 'cost-analysis':
+            if (typeof renderCostAnalysisPage === 'function') renderCostAnalysisPage();
+            break;
+        case 'notes':
+            if (typeof renderNotesPage === 'function') renderNotesPage();
+            break;
+        case 'tickets':
+            // Handled by js/tickets.js module via renderCurrentPage hook
+            break;
+        case 'spc':
+            if (typeof renderSPCPage === 'function') renderSPCPage();
+            break;
+        case 'shingo':
+            if (typeof renderShingoPage === 'function') renderShingoPage();
+            break;
         case 'help':
             // Static page — no render needed
             break;
     }
+    // Refresh active-filter indicators after each page render
+    setTimeout(updateFilterActives, 0);
+}
+
+// Mark filter selects that have a non-default (non-first-option) value active
+function updateFilterActives() {
+    document.querySelectorAll('.filter-select').forEach(sel => {
+        sel.classList.toggle('filter-active', sel.selectedIndex > 0);
+    });
 }
 
 // Filter and Search Handlers
@@ -1187,7 +1393,7 @@ function renderKPIs() {
         `;
     }).join('');
 
-    container.innerHTML = html || '<div class="empty-state"><div class="empty-state-icon">📈</div>No KPIs found</div>';
+    container.innerHTML = html || '<div class="empty-state"><div class="empty-state-icon"></div>No KPIs found</div>';
 }
 
 // KPI Detail Modal
@@ -1708,7 +1914,7 @@ function renderProjects() {
         `;
     }).join('');
 
-    container.innerHTML = html || '<div class="empty-state"><div class="empty-state-icon">📋</div>No projects found</div>';
+    container.innerHTML = html || '<div class="empty-state"><div class="empty-state-icon"></div>No projects found</div>';
 }
 
 // Create Project Modal
@@ -1932,9 +2138,11 @@ function showProjectDetailModal(projectId) {
                     </div>
                     <button class="btn btn-secondary btn-small" onclick="addProjectAction('${projectId}')">+ Add Action</button>
 
+                    ${renderFMEASection(project)}
+
                     <h3>Links</h3>
-                    ${dmaicRecord ? `<p>✓ <a href="#" onclick="navigateToPage('dmaic'); app.loadDMAICForProject(); closeModal(); return false;">View DMAIC Record</a></p>` : '<p>No DMAIC record yet</p>'}
-                    ${relatedAARs.length > 0 ? `<p>✓ ${relatedAARs.length} related AAR(s)</p>` : '<p>No related AARs</p>'}
+                    ${dmaicRecord ? `<p><a href="#" onclick="navigateToPage('dmaic'); app.loadDMAICForProject(); closeModal(); return false;">View DMAIC Record</a></p>` : '<p>No DMAIC record yet</p>'}
+                    ${relatedAARs.length > 0 ? `<p>${relatedAARs.length} related AAR(s)</p>` : '<p>No related AARs</p>'}
 
                     <h3>Notes</h3>
                     <textarea id="project-notes" class="form-control" style="min-height: 80px;">${project.notes}</textarea>
@@ -1962,7 +2170,7 @@ function renderProjectActions(project) {
     return project.actions.map(action => {
         const overdue = action.status !== 'Done' && isOverdue(action.dueDate);
         const actionClass = overdue ? 'action-item overdue' : action.status === 'Blocked' ? 'action-item' : 'action-item';
-        const statusBadge = action.status === 'Done' ? '✓' : action.status === 'Blocked' ? '⚠' : '○';
+        const statusBadge = action.status === 'Done' ? 'Done' : action.status === 'Blocked' ? '!' : '';
 
         return `
             <div class="${actionClass}" style="margin-bottom: 12px; border-left: 3px solid ${overdue ? 'var(--danger)' : action.status === 'Done' ? 'var(--success)' : 'var(--gray-300)'};">
@@ -2750,7 +2958,7 @@ function renderAAR() {
         `;
     }).join('');
 
-    container.innerHTML = html || '<div class="empty-state"><div class="empty-state-icon">📝</div>No AARs found</div>';
+    container.innerHTML = html || '<div class="empty-state"><div class="empty-state-icon"></div>No AARs found</div>';
 }
 
 // Create AAR Modal
@@ -3317,6 +3525,9 @@ function renderProcessLibrary() {
                             ${proc.area} • Owner: ${proc.owner}
                         </div>
                     </div>
+                    <button class="btn btn-secondary btn-small pf-flow-btn"
+                        onclick="event.stopPropagation(); window.showProcessFlowModal('${proc.id}')"
+                        title="View flow map">Flow Map</button>
                 </div>
                 <div style="margin-bottom: 12px; color: var(--gray-700); font-size: 13px;">
                     ${proc.purpose}
@@ -3328,7 +3539,7 @@ function renderProcessLibrary() {
         `;
     }).join('');
 
-    container.innerHTML = html || '<div class="empty-state"><div class="empty-state-icon">📚</div>No process docs found</div>';
+    container.innerHTML = html || '<div class="empty-state"><div class="empty-state-icon"></div>No process docs found</div>';
 }
 
 // Create Process Modal
@@ -3470,7 +3681,7 @@ function showProcessDetailModal(processId) {
                     <button class="modal-close">&times;</button>
                 </div>
                 <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
-                    ${needsReview ? '<div style="padding: 12px; background: #fed7aa; color: #9a3412; border-radius: 6px; margin-bottom: 16px;">⚠ This process has not been reviewed in over 90 days</div>' : ''}
+                    ${needsReview ? '<div style="padding: 12px; background: #fed7aa; color: #9a3412; border-radius: 6px; margin-bottom: 16px;">! This process has not been reviewed in over 90 days</div>' : ''}
 
                     <div class="form-group">
                         <label>Area:</label>
@@ -3524,6 +3735,7 @@ function showProcessDetailModal(processId) {
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-secondary" onclick="markProcessReviewed('${processId}')">Mark Reviewed Today</button>
+                    <button class="btn btn-secondary" onclick="window.showProcessFlowModal('${processId}')">Flow Map</button>
                     <button class="btn btn-secondary" onclick="editProcess('${processId}')">Edit</button>
                     <button class="btn btn-danger" onclick="deleteProcess('${processId}')">Delete</button>
                     <button class="btn btn-secondary" onclick="closeModal()">Close</button>
@@ -3987,7 +4199,7 @@ function renderMeetingActions(meeting) {
     }
 
     return meeting.actionItems.map(action => {
-        const statusBadge = action.status === 'Done' ? '✓' : '○';
+        const statusBadge = action.status === 'Done' ? 'Done' : '';
         return `
             <div style="padding: 8px; background: var(--gray-50); border-radius: 6px; margin-bottom: 8px;">
                 <div style="display: flex; justify-content: space-between; align-items: start;">
@@ -4236,7 +4448,8 @@ function resetToSampleData() {
         scAreas: [],
         issues: [],
         vsmMaps: [],
-        auditLog: []
+        auditLog: [],
+        costAnalysis: { boatsPerYear: 12, parts: [] }
     };
 
     seedSampleData();
@@ -4284,3 +4497,146 @@ window.addMeetingAction = addMeetingAction;
 window.saveMeetingAction = saveMeetingAction;
 window.markMeetingActionDone = markMeetingActionDone;
 window.deleteMeetingAction = deleteMeetingAction;
+
+// ─── FMEA ────────────────────────────────────────────────────────────────────
+
+function renderFMEASection(project) {
+    const rows = project.fmea || [];
+    const tbodyHtml = rows.length === 0
+        ? '<tr><td colspan="10" style="text-align:center;color:var(--text-muted);padding:16px;">No rows yet. Click &ldquo;+ Add Row&rdquo; to begin.</td></tr>'
+        : rows.map(r => renderFMEARow(project.id, r)).join('');
+    return `
+        <div style="margin-top:24px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <h3 style="margin:0;">FMEA</h3>
+            <button class="btn btn-secondary btn-small" onclick="addFmeaRow('${project.id}')">+ Add Row</button>
+        </div>
+        <div style="overflow-x:auto;">
+        <table class="fmea-table">
+            <thead><tr>
+                <th>Failure Mode</th><th>Effect</th><th>S</th>
+                <th>Cause</th><th>O</th><th>Controls</th>
+                <th>D</th><th>RPN</th><th>Action</th><th></th>
+            </tr></thead>
+            <tbody id="fmea-tbody-${project.id}">${tbodyHtml}</tbody>
+        </table></div></div>`;
+}
+
+function renderFMEARow(projectId, r) {
+    const rpn = (r.severity||0) * (r.occurrence||0) * (r.detection||0);
+    const rpnCls = rpn >= 200 ? 'fmea-rpn-high' : rpn >= 100 ? 'fmea-rpn-med' : rpn > 0 ? 'fmea-rpn-low' : '';
+    const e = escapeHtml;
+    return `<tr data-fmea-id="${r.id}" class="${r.status==='Done'?'fmea-row-done':''}">
+        <td>${e(r.failureMode)}</td><td>${e(r.effect)}</td>
+        <td class="fmea-score">${r.severity||'—'}</td>
+        <td>${e(r.cause)}</td>
+        <td class="fmea-score">${r.occurrence||'—'}</td>
+        <td>${e(r.controls)}</td>
+        <td class="fmea-score">${r.detection||'—'}</td>
+        <td class="fmea-score ${rpnCls}">${rpn||'—'}</td>
+        <td style="max-width:130px;font-size:12px;">${e(r.action||'')}</td>
+        <td style="white-space:nowrap;">
+            <button class="btn btn-secondary btn-small" title="${r.status==='Done'?'Reopen':'Mark done'}"
+                onclick="toggleFmeaStatus('${projectId}','${r.id}')">${r.status==='Done'?'Undo':'Done'}</button>
+            <button class="btn btn-secondary btn-small" onclick="editFmeaRow('${projectId}','${r.id}')">Edit</button>
+            <button class="btn btn-danger btn-small" onclick="deleteFmeaRow('${projectId}','${r.id}')">Remove</button>
+        </td></tr>`;
+}
+
+function fmeaFormRow(projectId, r) {
+    const e = s => (s||'').replace(/"/g,'&quot;');
+    return `<tr id="fmea-edit-row" data-fmea-id="${r?r.id:''}">
+        <td><input class="form-control" id="fmea-fm" value="${e(r&&r.failureMode)}" placeholder="Failure mode"></td>
+        <td><input class="form-control" id="fmea-eff" value="${e(r&&r.effect)}" placeholder="Effect"></td>
+        <td><input class="form-control fmea-num" id="fmea-s" type="number" min="1" max="10" value="${r?r.severity:''}" placeholder="1-10"></td>
+        <td><input class="form-control" id="fmea-cause" value="${e(r&&r.cause)}" placeholder="Cause"></td>
+        <td><input class="form-control fmea-num" id="fmea-o" type="number" min="1" max="10" value="${r?r.occurrence:''}" placeholder="1-10"></td>
+        <td><input class="form-control" id="fmea-ctrl" value="${e(r&&r.controls)}" placeholder="Controls"></td>
+        <td><input class="form-control fmea-num" id="fmea-d" type="number" min="1" max="10" value="${r?r.detection:''}" placeholder="1-10"></td>
+        <td>—</td>
+        <td><input class="form-control" id="fmea-act" value="${e(r&&r.action)}" placeholder="Recommended action"></td>
+        <td style="white-space:nowrap;">
+            <button class="btn btn-primary btn-small" onclick="saveFmeaRow('${projectId}','${r?r.id:''}')">Save</button>
+            <button class="btn btn-secondary btn-small" onclick="refreshFMEATable('${projectId}')">Cancel</button>
+        </td></tr>`;
+}
+
+function addFmeaRow(projectId) {
+    const tbody = document.getElementById('fmea-tbody-' + projectId);
+    if (!tbody || document.getElementById('fmea-edit-row')) return;
+    tbody.insertAdjacentHTML('beforeend', fmeaFormRow(projectId, null));
+    document.getElementById('fmea-fm').focus();
+}
+
+function editFmeaRow(projectId, rowId) {
+    const project = app.data.projects.find(p => p.id === projectId);
+    const row = project && project.fmea && project.fmea.find(r => r.id === rowId);
+    if (!row) return;
+    if (document.getElementById('fmea-edit-row')) refreshFMEATable(projectId);
+    const tr = document.querySelector('[data-fmea-id="' + rowId + '"]');
+    if (tr) tr.outerHTML = fmeaFormRow(projectId, row);
+    const fm = document.getElementById('fmea-fm');
+    if (fm) fm.focus();
+}
+
+function saveFmeaRow(projectId, existingId) {
+    const project = app.data.projects.find(p => p.id === projectId);
+    if (!project) return;
+    if (!project.fmea) project.fmea = [];
+    const row = {
+        id: existingId || generateId(),
+        failureMode: (document.getElementById('fmea-fm')||{}).value || '',
+        effect:      (document.getElementById('fmea-eff')||{}).value || '',
+        severity:    parseInt((document.getElementById('fmea-s')||{}).value) || 0,
+        cause:       (document.getElementById('fmea-cause')||{}).value || '',
+        occurrence:  parseInt((document.getElementById('fmea-o')||{}).value) || 0,
+        controls:    (document.getElementById('fmea-ctrl')||{}).value || '',
+        detection:   parseInt((document.getElementById('fmea-d')||{}).value) || 0,
+        action:      (document.getElementById('fmea-act')||{}).value || '',
+        status:      'Open'
+    };
+    if (existingId) {
+        const idx = project.fmea.findIndex(r => r.id === existingId);
+        if (idx >= 0) { row.status = project.fmea[idx].status; project.fmea[idx] = row; }
+        else project.fmea.push(row);
+    } else {
+        project.fmea.push(row);
+    }
+    saveData();
+    showToast('FMEA row saved');
+    refreshFMEATable(projectId);
+}
+
+function refreshFMEATable(projectId) {
+    const project = app.data.projects.find(p => p.id === projectId);
+    const tbody = document.getElementById('fmea-tbody-' + projectId);
+    if (!tbody || !project) return;
+    const rows = project.fmea || [];
+    tbody.innerHTML = rows.length === 0
+        ? '<tr><td colspan="10" style="text-align:center;color:var(--text-muted);padding:16px;">No rows yet.</td></tr>'
+        : rows.map(r => renderFMEARow(projectId, r)).join('');
+}
+
+function deleteFmeaRow(projectId, rowId) {
+    const project = app.data.projects.find(p => p.id === projectId);
+    if (!project || !project.fmea) return;
+    project.fmea = project.fmea.filter(r => r.id !== rowId);
+    saveData();
+    refreshFMEATable(projectId);
+}
+
+function toggleFmeaStatus(projectId, rowId) {
+    const project = app.data.projects.find(p => p.id === projectId);
+    const row = project && project.fmea && project.fmea.find(r => r.id === rowId);
+    if (!row) return;
+    row.status = row.status === 'Done' ? 'Open' : 'Done';
+    saveData();
+    refreshFMEATable(projectId);
+}
+
+window.addFmeaRow = addFmeaRow;
+window.editFmeaRow = editFmeaRow;
+window.saveFmeaRow = saveFmeaRow;
+window.refreshFMEATable = refreshFMEATable;
+window.deleteFmeaRow = deleteFmeaRow;
+window.toggleFmeaStatus = toggleFmeaStatus;

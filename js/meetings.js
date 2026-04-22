@@ -171,7 +171,7 @@
         });
 
         if (filteredMeetings.length === 0) {
-            container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🗓️</div><p>No meetings found</p><p style="font-size: 13px; color: var(--muted);">Create a meeting record for your Outlook meetings to track notes and outcomes</p></div>';
+            container.innerHTML = '<div class="empty-state"><div class="empty-state-icon"></div><p>No meetings found</p><p style="font-size: 13px; color: var(--muted);">Create a meeting record for your Outlook meetings to track notes and outcomes</p></div>';
             return;
         }
 
@@ -201,6 +201,7 @@
                         </div>
                     </div>
                     <div style="display: flex; gap: 6px; align-items: center;">
+                        ${meeting.recurrence === 'weekly' ? '<span class="meeting-recurrence-badge">Weekly</span>' : meeting.recurrence === 'biweekly' ? '<span class="meeting-recurrence-badge">Biweekly</span>' : meeting.recurrence === 'monthly' ? '<span class="meeting-recurrence-badge">Monthly</span>' : ''}
                         ${meeting.type ? `<span class="status-badge">${escapeHtml(meeting.type)}</span>` : ''}
                         ${meeting.section ? `<span class="status-badge">${escapeHtml(meeting.section)}</span>` : ''}
                         <button class="btn btn-secondary btn-small" style="margin-left:4px;"
@@ -215,10 +216,10 @@
                     </div>
                 ` : ''}
                 <div style="display: flex; gap: 16px; font-size: 13px; color: var(--muted); flex-wrap: wrap;">
-                    ${hasNotes ? `<span>📝 Has notes</span>` : '<span style="color: var(--warning);">⚠️ No notes yet</span>'}
-                    ${issueCount > 0 ? `<span>🎯 ${issueCount} issue(s)</span>` : ''}
-                    ${decisionCount > 0 ? `<span>✓ ${decisionCount} decision(s)</span>` : ''}
-                    ${actionCount > 0 ? `<span style="color: var(--warning);">⚡ ${actionCount} open action(s)</span>` : ''}
+                    ${hasNotes ? `<span>Has notes</span>` : '<span style="color: var(--warning);">! No notes yet</span>'}
+                    ${issueCount > 0 ? `<span>${issueCount} issue(s)</span>` : ''}
+                    ${decisionCount > 0 ? `<span>${decisionCount} decision(s)</span>` : ''}
+                    ${actionCount > 0 ? `<span style="color: var(--warning);">${actionCount} open action(s)</span>` : ''}
                 </div>
             </div>
         `;
@@ -266,7 +267,7 @@
         });
 
         if (Object.keys(grouped).length === 0) {
-            container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🗓️</div><p>No meetings found</p></div>';
+            container.innerHTML = '<div class="empty-state"><div class="empty-state-icon"></div><p>No meetings found</p></div>';
             return;
         }
 
@@ -285,7 +286,7 @@
                         <div style="display: flex; justify-content: space-between; align-items: start;">
                             <div>
                                 <strong>${escapeHtml(meeting.title || 'Untitled Meeting')}</strong>
-                                ${!hasNotes ? ' <span style="color: var(--warning); font-size: 11px;">⚠️ No notes</span>' : ''}
+                                ${!hasNotes ? ' <span style="color: var(--warning); font-size: 11px;">! No notes</span>' : ''}
                                 <br>
                                 <small style="color: var(--muted);">
                                     ${meeting.date ? formatDate(new Date(meeting.date)) : ''}
@@ -377,7 +378,7 @@
         if (!container) return;
         container.innerHTML = _pickerSelectedIds.map(id => {
             const name = typeof getContactName === 'function' ? getContactName(id) : id;
-            return `<span class="attendee-tag">${escapeHtml(name)}<button type="button" class="attendee-tag-edit" onclick="app.pickerEditContact('${id}')" title="Edit contact">✏</button><button type="button" class="attendee-tag-remove" onclick="app.pickerRemove('${id}')">&times;</button></span>`;
+            return `<span class="attendee-tag">${escapeHtml(name)}<button type="button" class="attendee-tag-edit" onclick="app.pickerEditContact('${id}')" title="Edit contact">Edit</button><button type="button" class="attendee-tag-remove" onclick="app.pickerRemove('${id}')">&times;</button></span>`;
         }).join('');
     }
 
@@ -484,7 +485,11 @@
 
         const now = new Date();
         const today = now.toISOString().split('T')[0];
-        const currentTime = now.toTimeString().slice(0, 5);
+        const _rawMin = now.getHours() * 60 + now.getMinutes();
+        const _roundedMin = Math.ceil(_rawMin / 5) * 5;
+        const _rh = Math.floor(_roundedMin / 60) % 24;
+        const _rm = _roundedMin % 60;
+        const currentTime = String(_rh).padStart(2,'0') + ':' + String(_rm).padStart(2,'0');
 
         const modalHtml = `
             <div class="modal-overlay" id="meetingModal">
@@ -516,12 +521,22 @@
                                 </div>
                                 <div class="form-group">
                                     <label>Start Time</label>
-                                    <input type="time" id="meetingTime" class="form-control" value="${prefillData.time || currentTime}">
+                                    <input type="time" id="meetingTime" class="form-control" step="300" value="${prefillData.time || currentTime}">
                                 </div>
                                 <div class="form-group">
                                     <label>End Time</label>
-                                    <input type="time" id="meetingEndTime" class="form-control" value="${prefillData.endTime || ''}">
+                                    <input type="time" id="meetingEndTime" class="form-control" step="300" value="${prefillData.endTime || ''}">
                                 </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Recurrence</label>
+                                <select id="meeting-recurrence" class="form-control">
+                                    <option value="">No recurrence</option>
+                                    <option value="weekly" ${(prefillData.recurrence || '') === 'weekly' ? 'selected' : ''}>Weekly</option>
+                                    <option value="biweekly" ${(prefillData.recurrence || '') === 'biweekly' ? 'selected' : ''}>Every 2 weeks</option>
+                                    <option value="monthly" ${(prefillData.recurrence || '') === 'monthly' ? 'selected' : ''}>Monthly</option>
+                                </select>
                             </div>
 
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
@@ -627,7 +642,7 @@
             <div class="modal-overlay" id="quickMeetingModal">
                 <div class="modal">
                     <div class="modal-header">
-                        <h2>⚡ Quick Capture Past Meeting</h2>
+                        <h2>Quick Capture Past Meeting</h2>
                         <button class="modal-close" onclick="app.closeQuickMeetingModal()">&times;</button>
                     </div>
                     <div class="modal-body">
@@ -752,6 +767,7 @@
             parkingLot: document.getElementById('meetingParkingLot').value.trim(),
             nextSteps: document.getElementById('meetingNextSteps').value.trim(),
             followupDate: document.getElementById('meetingFollowupDate').value,
+            recurrence: document.getElementById('meeting-recurrence')?.value || '',
             actionItems: [],
             linkedIssueIds: [],
             createdDate: new Date().toISOString(),
@@ -855,10 +871,10 @@
                         <!-- Tabs for different note sections -->
                         <div class="tabs" style="border-bottom: 2px solid var(--border); padding: 0 24px; background: var(--surface-2);">
                             <button class="tab-btn active" onclick="app.switchMeetingTab('overview')">Overview</button>
-                            <button class="tab-btn" onclick="app.switchMeetingTab('notes')">📝 Notes</button>
-                            <button class="tab-btn" onclick="app.switchMeetingTab('decisions')">✓ Decisions</button>
-                            <button class="tab-btn" onclick="app.switchMeetingTab('actions')">⚡ Actions</button>
-                            <button class="tab-btn" onclick="app.switchMeetingTab('issues')">🎯 Issues</button>
+                            <button class="tab-btn" onclick="app.switchMeetingTab('notes')">Notes</button>
+                            <button class="tab-btn" onclick="app.switchMeetingTab('decisions')">Decisions</button>
+                            <button class="tab-btn" onclick="app.switchMeetingTab('actions')">Actions</button>
+                            <button class="tab-btn" onclick="app.switchMeetingTab('issues')">Issues</button>
                         </div>
 
                         <div style="padding: 24px;">
@@ -872,6 +888,12 @@
                                 ${getMeetingAttendeesDisplay(meeting) ? `
                                 <div style="margin-bottom: 16px;">
                                     <strong>Attendees:</strong> ${escapeHtml(getMeetingAttendeesDisplay(meeting))}
+                                </div>
+                                ` : ''}
+
+                                ${meeting.recurrence ? `
+                                <div style="margin-bottom: 16px; font-size: 13px;">
+                                    <strong>Recurrence:</strong> ${meeting.recurrence === 'weekly' ? 'Weekly' : meeting.recurrence === 'biweekly' ? 'Every 2 weeks' : meeting.recurrence === 'monthly' ? 'Monthly' : escapeHtml(meeting.recurrence)}
                                 </div>
                                 ` : ''}
 
@@ -894,7 +916,7 @@
                                 </div>
 
                                 <div style="margin-top: 24px;">
-                                    <button class="btn btn-primary" onclick="app.switchMeetingTab('notes')">📝 Add/Edit Notes</button>
+                                    <button class="btn btn-primary" onclick="app.switchMeetingTab('notes')">Add/Edit Notes</button>
                                     <button class="btn btn-secondary" onclick="app.editMeetingBasicInfo('${meeting.id}')">Edit Meeting Info</button>
                                 </div>
                             </div>
@@ -938,7 +960,7 @@
                                     <input type="date" id="meetingFollowupDate" class="form-control" value="${meeting.followupDate || ''}">
                                 </div>
 
-                                <button class="btn btn-primary" onclick="app.saveMeetingNotes('${meeting.id}')">💾 Save Notes</button>
+                                <button class="btn btn-primary" onclick="app.saveMeetingNotes('${meeting.id}')">Save Notes</button>
                             </div>
 
                             <!-- Decisions Tab -->
@@ -986,8 +1008,8 @@
                                                         </div>
                                                     </div>
                                                     <div class="issue-meta">
-                                                        <div class="issue-meta-item">📂 ${issue.section || 'No section'}</div>
-                                                        <div class="issue-meta-item">👤 ${issue.owner || 'Unassigned'}</div>
+                                                        <div class="issue-meta-item">${issue.section || 'No section'}</div>
+                                                        <div class="issue-meta-item">${issue.owner || 'Unassigned'}</div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -998,8 +1020,9 @@
                         </div>
                     </div>
                     <div class="modal-footer" style="border-top: 2px solid var(--border);">
-                        <button class="btn btn-danger" onclick="app.deleteMeeting('${meeting.id}')">🗑️ Delete Meeting</button>
-                        <button class="btn btn-secondary" onclick="app.printMeetingSummary('${meeting.id}')">🖨️ Print Summary</button>
+                        <button class="btn btn-danger" onclick="app.deleteMeeting('${meeting.id}')">Delete Meeting</button>
+                        <button class="btn btn-secondary" onclick="app.printMeetingSummary('${meeting.id}')">Print Summary</button>
+                        ${meeting.recurrence ? `<button class="btn btn-primary" onclick="app.createNextOccurrence('${meeting.id}')">Create Next Occurrence</button>` : ''}
                         <button class="btn btn-secondary" onclick="app.closeMeetingDetailModal()">Close</button>
                     </div>
                 </div>
@@ -1023,7 +1046,7 @@
         decisions.forEach(decision => {
             html += `
                 <div class="action-item" style="background: var(--success-bg); border-left-color: var(--success);">
-                    <div class="action-text">✓ ${escapeHtml(decision.text)}</div>
+                    <div class="action-text">${escapeHtml(decision.text)}</div>
                     <div class="action-meta">
                         <small>${formatDate(new Date(decision.timestamp))}</small>
                         <button class="btn btn-danger btn-small" onclick="app.removeDecision('${activeMeetingId}', '${decision.id}')" style="margin-left: 8px;">Remove</button>
@@ -1047,7 +1070,7 @@
                 <div class="action-item ${action.status === 'Done' ? '' : (isOverdue ? 'overdue' : 'due-soon')}">
                     <div style="flex: 1;">
                         <div class="action-text">
-                            ${action.status === 'Done' ? '✓ ' : ''}${escapeHtml(action.text)}
+                            ${escapeHtml(action.text)}
                         </div>
                         <div class="action-meta">
                             ${action.owner || 'Unassigned'} • Due: ${action.dueDate ? formatDate(new Date(action.dueDate)) : 'No date'}
@@ -1055,7 +1078,7 @@
                         </div>
                     </div>
                     <div style="display: flex; gap: 4px;">
-                        ${action.status !== 'Done' ? `<button class="btn btn-success btn-small" onclick="app.toggleActionStatus('${activeMeetingId}', '${action.id}')">✓ Done</button>` : ''}
+                        ${action.status !== 'Done' ? `<button class="btn btn-success btn-small" onclick="app.toggleActionStatus('${activeMeetingId}', '${action.id}')">Done</button>` : ''}
                         <button class="btn btn-secondary btn-small" onclick="app.editActionItem('${activeMeetingId}', '${action.id}')">Edit</button>
                         <button class="btn btn-danger btn-small" onclick="app.removeActionItem('${activeMeetingId}', '${action.id}')">Remove</button>
                     </div>
@@ -1093,39 +1116,60 @@
         const actions = (meeting.actionItems || []);
         const decisions = (meeting.decisions || []);
 
+        const dateStr = [
+            meeting.date || '',
+            meeting.time ? (meeting.time + (meeting.endTime ? '\u2013' + meeting.endTime : '')) : '',
+            meeting.location ? escapeHtml(meeting.location) : ''
+        ].filter(Boolean).join(' \u00b7 ');
+
         const html = `<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>${escapeHtml(meeting.title)} — Meeting Summary</title>
+<html lang="en"><head><meta charset="UTF-8">
+<title>${escapeHtml(meeting.title)} \u2014 Meeting Summary</title>
 <style>
-  body { font-family: Arial, sans-serif; max-width: 800px; margin: 40px auto; color: #111; font-size: 14px; }
-  h1 { font-size: 22px; margin-bottom: 4px; }
-  .meta { color: #555; margin-bottom: 24px; font-size: 13px; }
-  h2 { font-size: 15px; border-bottom: 2px solid #ddd; padding-bottom: 4px; margin-top: 24px; }
-  .item { padding: 8px 0; border-bottom: 1px solid #eee; }
+  @page { margin: 0.75in; size: letter; }
+  *, *::before, *::after { box-sizing: border-box; }
+  body { font-family: Arial, Helvetica, sans-serif; margin: 0; padding: 0; color: #111; font-size: 13px; line-height: 1.6; background: #fff; }
+  .doc-header { border-bottom: 3px solid #111; padding-bottom: 12px; margin-bottom: 20px; }
+  h1 { font-size: 20px; font-weight: 700; margin: 0 0 4px; }
+  .date-line { color: #444; font-size: 12px; margin: 4px 0 0; }
+  .badges { margin-top: 6px; }
+  .badge { display: inline-block; background: #eee; border: 1px solid #bbb; border-radius: 3px; padding: 1px 7px; font-size: 11px; margin-right: 4px; }
+  .attendees { font-size: 13px; margin: 12px 0 0; }
+  h2 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.7px; color: #333; border-bottom: 1px solid #bbb; padding-bottom: 3px; margin: 20px 0 8px; page-break-after: avoid; }
+  .section { page-break-inside: avoid; margin-bottom: 14px; }
+  .item { padding: 5px 0; border-bottom: 1px solid #eee; font-size: 13px; line-height: 1.5; }
   .item:last-child { border-bottom: none; }
-  .badge { display: inline-block; background: #e5e7eb; border-radius: 4px; padding: 2px 8px; font-size: 12px; margin-right: 4px; }
-  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
-  th { text-align: left; padding: 6px 8px; background: #f3f4f6; font-size: 12px; }
-  td { padding: 6px 8px; border-bottom: 1px solid #e5e7eb; font-size: 13px; }
-  @media print { body { margin: 20px; } }
+  p { margin: 5px 0; font-size: 13px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 12px; page-break-inside: auto; }
+  thead { display: table-header-group; }
+  th { text-align: left; padding: 5px 8px; background: #f0f0f0; font-weight: 700; font-size: 11px; text-transform: uppercase; border: 1px solid #ccc; }
+  td { padding: 5px 8px; border: 1px solid #ddd; vertical-align: top; }
+  tr { page-break-inside: avoid; }
+  .status-done { color: #166534; font-weight: 600; }
+  .status-pending { color: #92400e; }
+  .footer { margin-top: 36px; padding-top: 8px; border-top: 1px solid #ddd; color: #aaa; font-size: 10px; }
+  @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
 </style></head><body>
-<h1>${escapeHtml(meeting.title)}</h1>
-<div class="meta">
-  ${meeting.date || ''} ${meeting.time ? '• ' + meeting.time : ''}${meeting.endTime ? '–' + meeting.endTime : ''}
-  ${meeting.location ? ' • ' + escapeHtml(meeting.location) : ''}
-  <span class="badge">${escapeHtml(meeting.type || '')}</span>
-  <span class="badge">${escapeHtml(meeting.section || '')}</span>
+
+<div class="doc-header">
+  <h1>${escapeHtml(meeting.title)}</h1>
+  <div class="date-line">${dateStr}</div>
+  <div class="badges">
+    ${meeting.type ? '<span class="badge">' + escapeHtml(meeting.type) + '</span>' : ''}
+    ${meeting.section ? '<span class="badge">' + escapeHtml(meeting.section) + '</span>' : ''}
+  </div>
+  ${attendeeNames ? '<p class="attendees"><strong>Attendees:</strong> ' + escapeHtml(attendeeNames) + '</p>' : ''}
 </div>
-${attendeeNames ? `<p><strong>Attendees:</strong> ${escapeHtml(attendeeNames)}</p>` : ''}
-${meeting.agenda ? `<h2>Agenda</h2><pre style="font-family:inherit;white-space:pre-wrap;">${escapeHtml(meeting.agenda)}</pre>` : ''}
-${meeting.discussionNotes ? `<h2>Discussion Notes</h2><pre style="font-family:inherit;white-space:pre-wrap;">${escapeHtml(meeting.discussionNotes)}</pre>` : ''}
-${decisions.length > 0 ? `<h2>Decisions (${decisions.length})</h2>${decisions.map(d => `<div class="item">• ${escapeHtml(d.text || d)}</div>`).join('')}` : ''}
-${actions.length > 0 ? `<h2>Action Items (${actions.length})</h2>
-<table><tr><th>Action</th><th>Owner</th><th>Due</th><th>Status</th></tr>
-${actions.map(a => `<tr><td>${escapeHtml(a.text)}</td><td>${escapeHtml(a.owner || '')}</td><td>${a.dueDate || ''}</td><td>${a.status || ''}</td></tr>`).join('')}
-</table>` : ''}
-${meeting.risks ? `<h2>Risks / Blockers</h2><p>${escapeHtml(meeting.risks)}</p>` : ''}
-${meeting.nextMeetingDate ? `<p><strong>Next Meeting:</strong> ${meeting.nextMeetingDate}</p>` : ''}
-<p style="margin-top:40px;color:#999;font-size:11px;">Generated by CI Tracker — ${new Date().toLocaleString()}</p>
+
+${meeting.agenda ? '<div class="section"><h2>Agenda</h2><div class="item" style="white-space:pre-wrap;">' + escapeHtml(meeting.agenda) + '</div></div>' : ''}
+${meeting.keyTopics ? '<div class="section"><h2>Key Topics Discussed</h2><div class="item">' + meeting.keyTopics + '</div></div>' : ''}
+${meeting.discussionNotes ? '<div class="section"><h2>Discussion Notes</h2><div class="item">' + meeting.discussionNotes + '</div></div>' : ''}
+${decisions.length > 0 ? '<div class="section"><h2>Decisions (' + decisions.length + ')</h2>' + decisions.map(d => '<div class="item">\u2022 <span>' + (d.text || d) + '</span></div>').join('') + '</div>' : ''}
+${actions.length > 0 ? '<div class="section"><h2>Action Items (' + actions.length + ')</h2><table><thead><tr><th>Action</th><th>Owner</th><th>Due Date</th><th>Status</th></tr></thead><tbody>' + actions.map(a => '<tr><td>' + escapeHtml(a.text || '') + '</td><td>' + escapeHtml(a.owner || '') + '</td><td>' + escapeHtml(a.dueDate || '') + '</td><td class="' + (a.status === 'Done' ? 'status-done' : 'status-pending') + '">' + escapeHtml(a.status || '') + '</td></tr>').join('') + '</tbody></table></div>' : ''}
+${meeting.risks ? '<div class="section"><h2>Risks / Blockers</h2><div class="item">' + meeting.risks + '</div></div>' : ''}
+${meeting.nextMeetingDate ? '<p><strong>Next Meeting:</strong> ' + escapeHtml(meeting.nextMeetingDate) + '</p>' : ''}
+
+<div class="footer">Generated by CI Tracker &mdash; ${new Date().toLocaleString()}</div>
 </body></html>`;
 
         const win = window.open('', '_blank');
@@ -1391,6 +1435,140 @@ ${meeting.nextMeetingDate ? `<p><strong>Next Meeting:</strong> ${meeting.nextMee
         }
     }
 
+    // ─── Phase 7: Meeting Templates ───────────────────────────────────────────
+
+    const MEETING_TEMPLATES = [
+        {
+            name: 'Weekly Supplier Review',
+            defaultTitle: 'Weekly Supplier Review',
+            type: 'Supplier Call',
+            defaultDurationMin: 60,
+            agendaText: '• Status of open POs\n• Quality issues\n• Schedule risks\n• Action items review'
+        },
+        {
+            name: 'DMAIC Gate Review',
+            defaultTitle: 'DMAIC Gate Review',
+            type: 'Project Review',
+            defaultDurationMin: 90,
+            agendaText: '• Phase deliverables review\n• Tollgate checklist\n• Key findings & data\n• Next phase plan\n• Action items'
+        },
+        {
+            name: 'Daily Standup',
+            defaultTitle: 'Daily Standup',
+            type: 'Standup',
+            defaultDurationMin: 15,
+            agendaText: '• Yesterday: What was completed\n• Today: What is planned\n• Blockers: Any impediments'
+        },
+        {
+            name: 'After Action Review',
+            defaultTitle: 'After Action Review',
+            type: 'Problem Solving',
+            defaultDurationMin: 60,
+            agendaText: '• What happened (timeline)\n• What went well\n• What to improve\n• Actions & owners'
+        },
+        {
+            name: 'Kickoff Meeting',
+            defaultTitle: 'Project Kickoff',
+            type: 'Team Meeting',
+            defaultDurationMin: 90,
+            agendaText: '• Project scope & objectives\n• Roles & responsibilities\n• Timeline & milestones\n• Risks & mitigation\n• Next steps'
+        }
+    ];
+
+    function showMeetingTemplatePicker() {
+        const existing = document.getElementById('meetingTemplatePickerModal');
+        if (existing) existing.remove();
+        function escHtml(t) { if (!t) return ''; return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+        const cards = MEETING_TEMPLATES.map((t, i) =>
+            '<div class="template-card" onclick="app._selectMeetingTemplate(' + i + ')">' +
+            '<div class="template-card-name">' + escHtml(t.name) + '</div>' +
+            '<div class="template-card-preview">' + escHtml(t.agendaText) + '</div>' +
+            '</div>'
+        ).join('');
+        // User-saved templates
+        const savedTemplates = (app.data.meetingTemplates || []).map((t, i) =>
+            '<div class="template-card" onclick="app._selectSavedMeetingTemplate(' + i + ')">' +
+            '<div class="template-card-name">' + escHtml(t.name) + ' <span style="font-size:10px;color:var(--text-muted);">(custom)</span></div>' +
+            '<div class="template-card-preview">' + escHtml(t.agendaText || '') + '</div>' +
+            '</div>'
+        ).join('');
+        const html = '<div class="modal-overlay" id="meetingTemplatePickerModal">' +
+            '<div class="modal" style="max-width:680px;">' +
+            '<div class="modal-header"><h2>Meeting Templates</h2>' +
+            '<button class="modal-close" onclick="document.getElementById(\'meetingTemplatePickerModal\').remove()">&times;</button></div>' +
+            '<div class="modal-body">' +
+            '<p style="color:var(--text-muted);font-size:13px;margin-bottom:12px;">Select a template to pre-fill the meeting form.</p>' +
+            '<div class="template-picker-grid">' + cards + savedTemplates + '</div>' +
+            '</div>' +
+            '<div class="modal-footer"><button class="btn btn-secondary" onclick="document.getElementById(\'meetingTemplatePickerModal\').remove()">Cancel</button></div>' +
+            '</div></div>';
+        document.body.insertAdjacentHTML('beforeend', html);
+    }
+
+    app._selectMeetingTemplate = function(idx) {
+        const t = MEETING_TEMPLATES[idx];
+        if (!t) return;
+        document.getElementById('meetingTemplatePickerModal')?.remove();
+        showCreateMeetingModal({
+            title: t.defaultTitle,
+            type: t.type,
+            keyTopics: t.agendaText
+        });
+    };
+
+    app._selectSavedMeetingTemplate = function(idx) {
+        const t = (app.data.meetingTemplates || [])[idx];
+        if (!t) return;
+        document.getElementById('meetingTemplatePickerModal')?.remove();
+        showCreateMeetingModal({
+            title: t.defaultTitle || t.name,
+            type: t.type || '',
+            keyTopics: t.agendaText || ''
+        });
+    };
+
+    function createNextOccurrence(meetingId) {
+        const meeting = app.data.meetings.find(m => m.id === meetingId);
+        if (!meeting || !meeting.recurrence) return;
+
+        // Compute next date
+        const parts = meeting.date.split('-');
+        const baseDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        let nextDate;
+        if (meeting.recurrence === 'weekly') {
+            nextDate = new Date(baseDate);
+            nextDate.setDate(nextDate.getDate() + 7);
+        } else if (meeting.recurrence === 'biweekly') {
+            nextDate = new Date(baseDate);
+            nextDate.setDate(nextDate.getDate() + 14);
+        } else if (meeting.recurrence === 'monthly') {
+            nextDate = new Date(baseDate);
+            nextDate.setMonth(nextDate.getMonth() + 1);
+        } else {
+            return;
+        }
+        const yyyy = nextDate.getFullYear();
+        const mm = String(nextDate.getMonth() + 1).padStart(2, '0');
+        const dd = String(nextDate.getDate()).padStart(2, '0');
+        const nextDateStr = yyyy + '-' + mm + '-' + dd;
+
+        closeMeetingDetailModal();
+
+        showCreateMeetingModal({
+            title: meeting.title,
+            date: nextDateStr,
+            time: meeting.time || '',
+            endTime: meeting.endTime || '',
+            section: meeting.section || '',
+            type: meeting.type || '',
+            location: meeting.location || '',
+            attendeeIds: meeting.attendeeIds || [],
+            keyTopics: meeting.keyTopics || '',
+            nextSteps: meeting.nextSteps || '',
+            recurrence: meeting.recurrence
+        });
+    }
+
     // Expose functions to app namespace
     app.pickerSelect       = pickerSelect;
     app.pickerAddNew       = pickerAddNew;
@@ -1414,10 +1592,12 @@ ${meeting.nextMeetingDate ? `<p><strong>Next Meeting:</strong> ${meeting.nextMee
     app.removeActionItem = removeActionItem;
     app.editMeetingBasicInfo = editMeetingBasicInfo;
     app.deleteMeeting = deleteMeeting;
+    app.createNextOccurrence = createNextOccurrence;
     app.createIssueFromMeeting = createIssueFromMeeting;
     app.switchMeetingView = switchMeetingView;
     app.clearMeetingFilters = clearMeetingFilters;
     app.renderMeetingsPage = renderMeetingsPage;
     app.printMeetingSummary = printMeetingSummary;
+    app.showMeetingTemplatePicker = showMeetingTemplatePicker;
 
 })();

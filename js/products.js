@@ -32,7 +32,7 @@
         if (products.length === 0) {
             container.innerHTML = `
                 <div class="empty-state">
-                    <div class="empty-state-icon">🏭</div>
+                    <div class="empty-state-icon"></div>
                     <p>No products yet. Add your first product to start tracking CI opportunities by product.</p>
                 </div>`;
             return;

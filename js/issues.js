@@ -14,7 +14,8 @@
         severity: '',
         type: '',
         owner: '',
-        product: ''
+        product: '',
+        supplier: ''
     };
 
     // Bulk selection state
@@ -102,6 +103,14 @@
             populateIssueProductFilter();
         }
 
+        const supplierFilter = document.getElementById('issue-supplier-filter');
+        if (supplierFilter) {
+            supplierFilter.addEventListener('change', (e) => {
+                issueFilters.supplier = e.target.value;
+                renderIssuesList();
+            });
+        }
+
         // Populate owner filter
         populateOwnerFilter();
     }
@@ -146,12 +155,29 @@
         productFilter.value = currentValue;
     }
 
+    function populateIssueSupplierFilter() {
+        const supplierFilter = document.getElementById('issue-supplier-filter');
+        if (!supplierFilter) return;
+        const suppliers = new Set();
+        (app.data.issues || []).forEach(i => { if (i.supplier) suppliers.add(i.supplier); });
+        ((app.data.costAnalysis && app.data.costAnalysis.parts) || []).forEach(p => {
+            if (p.currentSupplier) suppliers.add(p.currentSupplier);
+        });
+        const currentValue = supplierFilter.value;
+        supplierFilter.innerHTML = '<option value="">All Suppliers</option>';
+        Array.from(suppliers).sort().forEach(s => {
+            supplierFilter.innerHTML += '<option value="' + s.replace(/"/g, '&quot;') + '">' + s.replace(/</g, '&lt;') + '</option>';
+        });
+        supplierFilter.value = currentValue;
+    }
+
     // Render Issues Page
     function renderIssuesPage() {
         renderTriagePanel();
         renderIssuesList();
         populateOwnerFilter();
         populateIssueProductFilter();
+        populateIssueSupplierFilter();
     }
 
     function renderTriagePanel() {
@@ -183,7 +209,7 @@
         }
 
         panel.style.display = 'block';
-        let html = '<h3>⚠️ Requires Immediate Attention</h3>';
+        let html = '<h3>! Requires Immediate Attention</h3>';
         html += '<div class="triage-list">';
 
         triageIssues.slice(0, 5).forEach(issue => {
@@ -236,6 +262,9 @@
             if (issueFilters.product && !(issue.productIds || []).includes(issueFilters.product)) {
                 return false;
             }
+            if (issueFilters.supplier && (issue.supplier || '') !== issueFilters.supplier) {
+                return false;
+            }
             return true;
         });
 
@@ -248,7 +277,7 @@
         });
 
         if (filteredIssues.length === 0) {
-            container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🎯</div><p>No issues found</p></div>';
+            container.innerHTML = '<div class="empty-state"><div class="empty-state-icon"></div><p>No issues found</p></div>';
             return;
         }
 
@@ -302,13 +331,14 @@
                         </div>
                     </div>
                     <div class="issue-meta">
-                        ${issue.section ? `<div class="issue-meta-item">📂 ${escapeHtml(issue.section)}</div>` : ''}
-                        ${issue.type ? `<div class="issue-meta-item">🏷️ ${escapeHtml(issue.type)}</div>` : ''}
-                        ${issue.owner ? `<div class="issue-meta-item">👤 ${escapeHtml(issue.owner)}</div>` : ''}
-                        ${issue.createdDate ? `<div class="issue-meta-item">📅 ${formatDate(new Date(issue.createdDate))}</div>` : ''}
-                        ${linkedProjects > 0 ? `<div class="issue-meta-item">📋 ${linkedProjects} project(s)</div>` : ''}
-                        ${linkedMeetings > 0 ? `<div class="issue-meta-item">🗓️ ${linkedMeetings} meeting(s)</div>` : ''}
-                        ${linkedAARs > 0 ? `<div class="issue-meta-item">📝 ${linkedAARs} AAR(s)</div>` : ''}
+                        ${issue.section ? `<div class="issue-meta-item">${escapeHtml(issue.section)}</div>` : ''}
+                        ${issue.type ? `<div class="issue-meta-item">${escapeHtml(issue.type)}</div>` : ''}
+                        ${issue.owner ? `<div class="issue-meta-item">${escapeHtml(issue.owner)}</div>` : ''}
+                        ${issue.supplier ? `<div class="issue-meta-item">${escapeHtml(issue.supplier)}</div>` : ''}
+                        ${issue.createdDate ? `<div class="issue-meta-item">${formatDate(new Date(issue.createdDate))}</div>` : ''}
+                        ${linkedProjects > 0 ? `<div class="issue-meta-item">${linkedProjects} project(s)</div>` : ''}
+                        ${linkedMeetings > 0 ? `<div class="issue-meta-item">${linkedMeetings} meeting(s)</div>` : ''}
+                        ${linkedAARs > 0 ? `<div class="issue-meta-item">${linkedAARs} AAR(s)</div>` : ''}
                     </div>
                     ${(issue.productIds || []).length > 0 ? `<div class="product-tags">${(issue.productIds || []).map(pid => { const p = (app.data.products || []).find(p => p.id === pid); return p ? `<span class="product-tag">${escapeHtml(p.name)}</span>` : ''; }).join('')}</div>` : ''}
                 </div>
@@ -318,6 +348,8 @@
 
     // Create Issue Modal
     function showCreateIssueModal(prefillData = {}) {
+        const existing = document.getElementById('issueModal');
+        if (existing) existing.remove();
         const modalHtml = `
             <div class="modal-overlay" id="issueModal">
                 <div class="modal">
@@ -331,12 +363,12 @@
 
                             <div class="form-group">
                                 <label>Title *</label>
-                                <input type="text" id="issueTitle" class="form-control" required value="${escapeHtml(prefillData.title || '')}">
+                                <input type="text" id="issueTitle" class="form-control" value="${escapeHtml(prefillData.title || '')}">
                             </div>
 
                             <div class="form-group">
                                 <label>Section/Category *</label>
-                                <select id="issueSection" class="form-control" required>
+                                <select id="issueSection" class="form-control">
                                     <option value="">Select Section</option>
                                     <option value="Electrical" ${prefillData.section === 'Electrical' ? 'selected' : ''}>Electrical</option>
                                     <option value="Mechanical" ${prefillData.section === 'Mechanical' ? 'selected' : ''}>Mechanical</option>
@@ -345,7 +377,7 @@
                                     <option value="Warehouse" ${prefillData.section === 'Warehouse' ? 'selected' : ''}>Warehouse</option>
                                     <option value="Quality" ${prefillData.section === 'Quality' ? 'selected' : ''}>Quality</option>
                                     <option value="Planning" ${prefillData.section === 'Planning' ? 'selected' : ''}>Planning</option>
-                                    <option value="Other" ${prefillData.section === 'Other' ? 'selected' : ''}>Other</option>
+                                    <option value="Other" ${!prefillData.section || prefillData.section === 'Other' ? 'selected' : ''}>Other</option>
                                 </select>
                             </div>
 
@@ -366,7 +398,7 @@
 
                             <div class="form-group">
                                 <label>Type *</label>
-                                <select id="issueType" class="form-control" required>
+                                <select id="issueType" class="form-control">
                                     <option value="">Select Type</option>
                                     <option value="Shortage" ${prefillData.type === 'Shortage' ? 'selected' : ''}>Shortage</option>
                                     <option value="Late supplier" ${prefillData.type === 'Late supplier' ? 'selected' : ''}>Late supplier</option>
@@ -375,8 +407,41 @@
                                     <option value="Safety risk" ${prefillData.type === 'Safety risk' ? 'selected' : ''}>Safety risk</option>
                                     <option value="Cost overrun" ${prefillData.type === 'Cost overrun' ? 'selected' : ''}>Cost overrun</option>
                                     <option value="Scheduling conflict" ${prefillData.type === 'Scheduling conflict' ? 'selected' : ''}>Scheduling conflict</option>
-                                    <option value="Other" ${prefillData.type === 'Other' ? 'selected' : ''}>Other</option>
+                                    <option value="Other" ${!prefillData.type || prefillData.type === 'Other' ? 'selected' : ''}>Other</option>
                                 </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Shingo Principle</label>
+                                <select id="issueShingoP" class="form-control">
+                                    <option value="">— Not linked —</option>
+                                    <option value="respect"    ${prefillData.shingoP === 'respect'    ? 'selected' : ''}>Respect Every Individual</option>
+                                    <option value="humility"   ${prefillData.shingoP === 'humility'   ? 'selected' : ''}>Lead with Humility</option>
+                                    <option value="perfection" ${prefillData.shingoP === 'perfection' ? 'selected' : ''}>Seek Perfection</option>
+                                    <option value="scientific" ${prefillData.shingoP === 'scientific' ? 'selected' : ''}>Embrace Scientific Thinking</option>
+                                    <option value="process"    ${prefillData.shingoP === 'process'    ? 'selected' : ''}>Focus on Process</option>
+                                    <option value="quality"    ${prefillData.shingoP === 'quality'    ? 'selected' : ''}>Assure Quality at the Source</option>
+                                    <option value="flow"       ${prefillData.shingoP === 'flow'       ? 'selected' : ''}>Flow & Pull Value</option>
+                                    <option value="systemic"   ${prefillData.shingoP === 'systemic'   ? 'selected' : ''}>Think Systemically</option>
+                                    <option value="purpose"    ${prefillData.shingoP === 'purpose'    ? 'selected' : ''}>Create Constancy of Purpose</option>
+                                    <option value="value"      ${prefillData.shingoP === 'value'      ? 'selected' : ''}>Create Value for the Customer</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Supplier</label>
+                                <input type="text" id="issueSupplier" class="form-control"
+                                    list="issue-supplier-datalist"
+                                    value="${escapeHtml(prefillData.supplier || '')}"
+                                    placeholder="e.g., Hadrian Automation, Acme Corp">
+                                <datalist id="issue-supplier-datalist">${
+                                    (() => {
+                                        const sups = new Set();
+                                        (app.data.issues || []).forEach(i => { if (i.supplier) sups.add(i.supplier); });
+                                        ((app.data.costAnalysis && app.data.costAnalysis.parts) || []).forEach(p => { if (p.currentSupplier) sups.add(p.currentSupplier); });
+                                        return Array.from(sups).sort().map(s => '<option value="' + s.replace(/"/g, '&quot;') + '">').join('');
+                                    })()
+                                }</datalist>
                             </div>
 
                             <div class="form-group">
@@ -477,7 +542,7 @@
                     </div>
                     <div class="modal-footer">
                         <button class="btn btn-secondary" onclick="app.closeIssueModal()">Cancel</button>
-                        <button class="btn btn-primary" onclick="app.saveIssue()">${prefillData.id ? 'Update' : 'Create'} Issue</button>
+                        <button type="button" class="btn btn-primary" onclick="app.saveIssue()">${prefillData.id ? 'Update' : 'Create'} Issue</button>
                     </div>
                 </div>
             </div>
@@ -498,8 +563,8 @@
         const severity = document.getElementById('issueSeverity').value;
         const type = document.getElementById('issueType').value;
 
-        if (!title || !section || !severity || !type) {
-            showToast('Please fill in all required fields', 'error');
+        if (!title) {
+            showToast('Please enter an issue title', 'error');
             return;
         }
 
@@ -508,6 +573,7 @@
             title,
             section,
             area: document.getElementById('issueArea').value.trim(),
+            supplier: document.getElementById('issueSupplier').value.trim(),
             severity,
             type,
             status: document.getElementById('issueStatus').value,
@@ -521,6 +587,7 @@
                 scheduleDays: parseFloat(document.getElementById('issueImpactSchedule').value) || 0,
                 notes: document.getElementById('issueImpactNotes').value.trim()
             },
+            shingoP: document.getElementById('issueShingoP')?.value || '',
             evidence: document.getElementById('issueEvidence').value.trim(),
             notes: document.getElementById('issueNotes').value.trim(),
             nextAction: document.getElementById('issueNextAction').value.trim(),
@@ -542,6 +609,7 @@
                 issueData.linkedMeetingIds = app.data.issues[index].linkedMeetingIds || [];
                 issueData.linkedProjectIds = app.data.issues[index].linkedProjectIds || [];
                 issueData.linkedAarIds = app.data.issues[index].linkedAarIds || [];
+                issueData.attachments = app.data.issues[index].attachments || [];
                 app.data.issues[index] = issueData;
                 logAudit('update', 'issue', `Updated issue: ${title}`);
             }
@@ -591,6 +659,7 @@
                             <div><strong>Area:</strong> ${issue.area || 'N/A'}</div>
                             <div><strong>Type:</strong> ${issue.type || 'N/A'}</div>
                             <div><strong>Owner:</strong> ${issue.owner || 'Unassigned'}</div>
+                            ${issue.supplier ? `<div><strong>Supplier:</strong> ${escapeHtml(issue.supplier)}</div>` : ''}
                             <div><strong>Created:</strong> ${formatDate(new Date(issue.createdDate))}</div>
                             <div><strong>Last Updated:</strong> ${formatDate(new Date(issue.lastUpdated))}</div>
                         </div>
@@ -626,6 +695,8 @@
                         </div>
                         ` : ''}
 
+                        ${renderAttachmentsSection(issue)}
+
                         ${issue.nextAction ? `
                         <div style="margin-bottom: 16px; padding: 12px; background: var(--accent-light); border-radius: 6px;">
                             <strong>Next Action:</strong> ${escapeHtml(issue.nextAction)}<br>
@@ -650,6 +721,8 @@
                             </div>
                         </div>
                         ` : ''}
+
+                        ${renderFishboneSection(issue)}
 
                         <hr style="margin: 20px 0; border: none; border-top: 1px solid var(--border);">
 
@@ -676,12 +749,12 @@
                         </div>
 
                         <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 20px;">
-                            <button class="btn btn-secondary" onclick="app.editIssue('${issue.id}')">✏️ Edit</button>
-                            <button class="btn btn-primary" onclick="app.convertIssueToProject('${issue.id}')">📋 Convert to DMAIC Project</button>
-                            <button class="btn btn-secondary" onclick="app.createAARFromIssue('${issue.id}')">📝 Add AAR</button>
-                            <button class="btn btn-secondary" onclick="app.startVSMForIssue('${issue.id}')">🗺️ Start VSM</button>
-                            ${issue.status !== 'Closed' ? `<button class="btn btn-success" onclick="app.closeIssue('${issue.id}')">✓ Close Issue</button>` : ''}
-                            <button class="btn btn-danger" onclick="app.deleteIssue('${issue.id}')">🗑️ Delete</button>
+                            <button class="btn btn-secondary" onclick="app.editIssue('${issue.id}')">Edit</button>
+                            <button class="btn btn-primary" onclick="app.convertIssueToProject('${issue.id}')">Convert to DMAIC Project</button>
+                            <button class="btn btn-secondary" onclick="app.createAARFromIssue('${issue.id}')">Add AAR</button>
+                            <button class="btn btn-secondary" onclick="app.startVSMForIssue('${issue.id}')">Start VSM</button>
+                            ${issue.status !== 'Closed' ? `<button class="btn btn-success" onclick="app.closeIssue('${issue.id}')">Close Issue</button>` : ''}
+                            <button class="btn btn-danger" onclick="app.deleteIssue('${issue.id}')">Delete</button>
                         </div>
                     </div>
                 </div>
@@ -867,7 +940,8 @@
             severity: '',
             type: '',
             owner: '',
-            product: ''
+            product: '',
+            supplier: ''
         };
 
         document.getElementById('issue-search').value = '';
@@ -931,5 +1005,220 @@
     app.toggleSelectAllIssues = toggleSelectAllIssues;
     app.clearBulkSelection = clearBulkSelection;
     app.applyBulkStatus = applyBulkStatus;
+
+    // ─── Fishbone (Ishikawa) ─────────────────────────────────────────────────
+
+    const FISHBONE_CATEGORIES = [
+        { key: 'Machine',     icon: '',  label: 'Machine / Equipment' },
+        { key: 'Method',      icon: '',  label: 'Method / Process' },
+        { key: 'Material',    icon: '',  label: 'Material' },
+        { key: 'Man',         icon: '',  label: 'People / Man' },
+        { key: 'Measurement', icon: '',  label: 'Measurement' },
+        { key: 'Environment', icon: '',  label: 'Environment' }
+    ];
+
+    function renderFishboneSection(issue) {
+        const fb = issue.fishbone || {};
+        const cards = FISHBONE_CATEGORIES.map(cat => {
+            const causes = fb[cat.key] || [];
+            const causeItems = causes.map((c, i) =>
+                '<div class="fb-cause-item">' + escapeHtml(c) +
+                ' <button class="fb-remove-btn" onclick="app.removeFishboneCause(\'' + issue.id + '\',\'' + cat.key + '\',' + i + ')">Remove</button></div>'
+            ).join('');
+            return '<div class="fb-card">' +
+                '<div class="fb-card-header">' + cat.label + '</div>' +
+                '<div class="fb-causes" id="fb-causes-' + issue.id + '-' + cat.key + '">' +
+                (causeItems || '<div class="fb-empty">No causes yet</div>') +
+                '</div>' +
+                '<div class="fb-add-row">' +
+                '<input class="form-control" id="fb-input-' + issue.id + '-' + cat.key + '" placeholder="Add cause..." onkeydown="if(event.key===\'Enter\')app.addFishboneCause(\'' + issue.id + '\',\'' + cat.key + '\')">' +
+                '<button class="btn btn-secondary btn-small" onclick="app.addFishboneCause(\'' + issue.id + '\',\'' + cat.key + '\')">+</button>' +
+                '</div></div>';
+        }).join('');
+
+        return '<div class="fb-section">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">' +
+            '<strong style="font-size:14px;">Fishbone (Cause & Effect)</strong></div>' +
+            '<div class="fb-grid">' + cards + '</div></div>';
+    }
+
+    function addFishboneCause(issueId, category) {
+        const issue = app.data.issues.find(i => i.id === issueId);
+        if (!issue) return;
+        const input = document.getElementById('fb-input-' + issueId + '-' + category);
+        const val = (input && input.value.trim()) || '';
+        if (!val) return;
+        if (!issue.fishbone) issue.fishbone = {};
+        if (!issue.fishbone[category]) issue.fishbone[category] = [];
+        issue.fishbone[category].push(val);
+        saveData();
+        if (input) input.value = '';
+        refreshFishboneCauses(issueId, category, issue.fishbone[category]);
+    }
+
+    function removeFishboneCause(issueId, category, idx) {
+        const issue = app.data.issues.find(i => i.id === issueId);
+        if (!issue || !issue.fishbone || !issue.fishbone[category]) return;
+        issue.fishbone[category].splice(idx, 1);
+        saveData();
+        refreshFishboneCauses(issueId, category, issue.fishbone[category]);
+    }
+
+    function refreshFishboneCauses(issueId, category, causes) {
+        const container = document.getElementById('fb-causes-' + issueId + '-' + category);
+        if (!container) return;
+        if (!causes || causes.length === 0) {
+            container.innerHTML = '<div class="fb-empty">No causes yet</div>';
+            return;
+        }
+        container.innerHTML = causes.map((c, i) =>
+            '<div class="fb-cause-item">' + escapeHtml(c) +
+            ' <button class="fb-remove-btn" onclick="app.removeFishboneCause(\'' + issueId + '\',\'' + category + '\',' + i + ')">Remove</button></div>'
+        ).join('');
+    }
+
+    app.addFishboneCause    = addFishboneCause;
+    app.removeFishboneCause = removeFishboneCause;
+
+    // ── Attachments ───────────────────────────────────────────────────────────
+    function renderAttachmentsSection(issue) {
+        var attachments = issue.attachments || [];
+        var iid = issue.id;
+
+        var items = attachments.map(function(a) {
+            var del = '<button class="issue-attach-del" title="Remove" onclick="app._issueDeleteAttachment(\'' + iid + '\',\'' + a.id + '\')">×</button>';
+            if (a.type === 'image') {
+                return '<div class="issue-attach-row">' +
+                    '<img src="' + a.data + '" class="issue-attach-thumb" onclick="app._issueViewImage(\'' + a.id + '\',\'' + escapeHtml(issue.id) + '\')" title="Click to enlarge">' +
+                    '<span class="issue-attach-name">' + escapeHtml(a.name) + '</span>' +
+                    del + '</div>';
+            } else if (a.type === 'file') {
+                return '<div class="issue-attach-row">' +
+                    '<span class="issue-attach-icon"></span>' +
+                    '<a href="' + a.data + '" download="' + escapeHtml(a.name) + '" class="issue-attach-name">' + escapeHtml(a.name) + '</a>' +
+                    del + '</div>';
+            } else {
+                return '<div class="issue-attach-row">' +
+                    '<span class="issue-attach-icon"></span>' +
+                    '<a href="' + escapeHtml(a.url) + '" target="_blank" rel="noopener" class="issue-attach-name">' + escapeHtml(a.label || a.url) + '</a>' +
+                    del + '</div>';
+            }
+        }).join('');
+
+        return '<div class="issue-attach-section">' +
+            '<div class="issue-attach-header"><strong>Attachments</strong>' +
+            (attachments.length > 0 ? ' <span class="issue-attach-count">' + attachments.length + '</span>' : '') +
+            '</div>' +
+            '<div class="issue-attach-list">' +
+            (attachments.length === 0 ? '<span class="muted" style="font-size:12px;">None yet</span>' : items) +
+            '</div>' +
+            '<div class="issue-attach-actions">' +
+            '<button class="btn btn-secondary btn-small" onclick="app._issueToggleLinkForm(\'' + iid + '\')">+ Add Link</button>' +
+            '<label class="btn btn-secondary btn-small issue-attach-file-label">' +
+                'Attach File' +
+                '<input type="file" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv" style="display:none;" onchange="app._issueAddFile(\'' + iid + '\',this)">' +
+            '</label>' +
+            '</div>' +
+            '<div id="issue-link-form-' + iid + '" class="issue-link-form" style="display:none;">' +
+            '<input type="text" id="issue-link-label-' + iid + '" class="form-control" placeholder="Label (optional)" style="flex:1;min-width:120px;">' +
+            '<input type="url" id="issue-link-url-' + iid + '" class="form-control" placeholder="https://..." style="flex:2;min-width:180px;">' +
+            '<button class="btn btn-primary btn-small" onclick="app._issueAddLink(\'' + iid + '\')">Add</button>' +
+            '</div>' +
+            '</div>';
+    }
+
+    function _issueToggleLinkForm(issueId) {
+        var form = document.getElementById('issue-link-form-' + issueId);
+        if (!form) return;
+        var visible = form.style.display !== 'none';
+        form.style.display = visible ? 'none' : 'flex';
+        if (!visible) {
+            var el = document.getElementById('issue-link-url-' + issueId);
+            if (el) el.focus();
+        }
+    }
+
+    function _issueAddLink(issueId) {
+        var urlEl = document.getElementById('issue-link-url-' + issueId);
+        var labelEl = document.getElementById('issue-link-label-' + issueId);
+        var url = (urlEl ? urlEl.value : '').trim();
+        var label = (labelEl ? labelEl.value : '').trim();
+        if (!url) { showToast('URL is required', 'error'); return; }
+        if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+        var issue = app.data.issues.find(function(i) { return i.id === issueId; });
+        if (!issue) return;
+        if (!issue.attachments) issue.attachments = [];
+        issue.attachments.push({ id: generateId(), type: 'link', label: label || url, url: url, addedAt: new Date().toISOString() });
+        saveData();
+        closeIssueDetailModal();
+        viewIssueDetail(issueId);
+    }
+
+    function _issueAddFile(issueId, input) {
+        var file = input.files[0];
+        if (!file) return;
+        if (file.size > 800 * 1024) {
+            if (!confirm('This file is ' + (file.size / 1024).toFixed(0) + 'KB. Large files consume storage space. Continue?')) {
+                input.value = '';
+                return;
+            }
+        }
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            var issue = app.data.issues.find(function(i) { return i.id === issueId; });
+            if (!issue) return;
+            if (!issue.attachments) issue.attachments = [];
+            issue.attachments.push({
+                id: generateId(),
+                type: file.type.startsWith('image/') ? 'image' : 'file',
+                name: file.name,
+                mimeType: file.type,
+                data: e.target.result,
+                addedAt: new Date().toISOString()
+            });
+            try {
+                saveData();
+                showToast(file.name + ' attached');
+                closeIssueDetailModal();
+                viewIssueDetail(issueId);
+            } catch(err) {
+                issue.attachments.pop();
+                showToast('File too large for storage', 'error');
+            }
+        };
+        reader.readAsDataURL(file);
+        input.value = '';
+    }
+
+    function _issueDeleteAttachment(issueId, attachId) {
+        var issue = app.data.issues.find(function(i) { return i.id === issueId; });
+        if (!issue || !issue.attachments) return;
+        issue.attachments = issue.attachments.filter(function(a) { return a.id !== attachId; });
+        saveData();
+        showToast('Attachment removed');
+        closeIssueDetailModal();
+        viewIssueDetail(issueId);
+    }
+
+    function _issueViewImage(attachId, issueId) {
+        var issue = app.data.issues.find(function(i) { return i.id === issueId; });
+        if (!issue) return;
+        var a = (issue.attachments || []).find(function(x) { return x.id === attachId; });
+        if (!a) return;
+        var overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:zoom-out;';
+        overlay.onclick = function() { overlay.remove(); };
+        var img = document.createElement('img');
+        img.src = a.data;
+        img.style.cssText = 'max-width:90vw;max-height:90vh;border-radius:6px;box-shadow:0 8px 40px rgba(0,0,0,0.6);';
+        overlay.appendChild(img);
+        document.body.appendChild(overlay);
+    }
+
+    app._issueToggleLinkForm   = _issueToggleLinkForm;
+    app._issueAddLink          = _issueAddLink;
+    app._issueAddFile          = _issueAddFile;
+    app._issueDeleteAttachment = _issueDeleteAttachment;
+    app._issueViewImage        = _issueViewImage;
 
 })();

@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Submit a Request — SC CI Team</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: #0F161C;
+            color: #e0e8f0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 16px 60px;
+        }
+
+        .portal-header {
+            text-align: center;
+            margin-bottom: 36px;
+        }
+
+        .portal-logo {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: #1B2733;
+            border: 1px solid #263547;
+            border-radius: 10px;
+            padding: 10px 20px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            font-weight: 700;
+            color: #ACFF24;
+            letter-spacing: 0.5px;
+        }
+
+        .portal-logo span { font-size: 20px; }
+
+        h1 {
+            font-size: 26px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+
+        .portal-sub {
+            font-size: 14px;
+            color: #7a9ab0;
+            max-width: 480px;
+            margin: 0 auto;
+            line-height: 1.5;
+        }
+
+        .form-card {
+            background: #1B2733;
+            border: 1px solid #263547;
+            border-radius: 12px;
+            padding: 36px 40px;
+            width: 100%;
+            max-width: 620px;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-size: 12px;
+            font-weight: 700;
+            color: #7a9ab0;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            margin-bottom: 6px;
+        }
+
+        label .required { color: #ACFF24; margin-left: 2px; }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="date"],
+        select,
+        textarea {
+            width: 100%;
+            background: #0F161C;
+            border: 1px solid #263547;
+            border-radius: 6px;
+            color: #e0e8f0;
+            font-size: 14px;
+            padding: 10px 12px;
+            font-family: inherit;
+            transition: border-color 0.15s;
+            -webkit-appearance: none;
+        }
+
+        input[type="text"]:focus,
+        input[type="email"]:focus,
+        input[type="date"]:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #ACFF24;
+            box-shadow: 0 0 0 3px rgba(172,255,36,0.12);
+        }
+
+        select option { background: #1B2733; }
+
+        textarea { resize: vertical; min-height: 110px; line-height: 1.5; }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .hint {
+            font-size: 11px;
+            color: #5a7a8a;
+            margin-top: 4px;
+        }
+
+        .priority-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+
+        .priority-btn {
+            padding: 8px 4px;
+            border-radius: 6px;
+            border: 2px solid #263547;
+            background: #0F161C;
+            color: #7a9ab0;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.15s;
+        }
+
+        .priority-btn:hover { border-color: #3a5f7a; color: #e0e8f0; }
+        .priority-btn.selected-Low    { border-color: #3a5f7a; background: #0a1a2a; color: #7ab0d0; }
+        .priority-btn.selected-Medium { border-color: #b8940a; background: #1a1400; color: #f0c040; }
+        .priority-btn.selected-High   { border-color: #c0392b; background: #1a0808; color: #ff6b6b; }
+        .priority-btn.selected-Urgent { border-color: #c0392b; background: #2a0808; color: #ff3333; }
+
+        input[type="hidden"] { display: none; }
+
+        .submit-btn {
+            width: 100%;
+            padding: 14px;
+            background: #ACFF24;
+            color: #0F161C;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 800;
+            cursor: pointer;
+            letter-spacing: 0.3px;
+            transition: background 0.15s, transform 0.1s;
+            margin-top: 8px;
+        }
+
+        .submit-btn:hover { background: #c8ff60; }
+        .submit-btn:active { transform: scale(0.99); }
+        .submit-btn:disabled { background: #3a5f7a; color: #7a9ab0; cursor: not-allowed; }
+
+        .error-msg {
+            color: #ff6b6b;
+            font-size: 12px;
+            margin-top: 4px;
+            display: none;
+        }
+
+        /* Success screen */
+        .success-screen {
+            display: none;
+            text-align: center;
+            padding: 20px 0;
+        }
+
+        .success-icon {
+            font-size: 56px;
+            margin-bottom: 16px;
+        }
+
+        .success-screen h2 {
+            font-size: 22px;
+            font-weight: 700;
+            color: #ACFF24;
+            margin-bottom: 8px;
+        }
+
+        .ticket-number-display {
+            display: inline-block;
+            background: #0F161C;
+            border: 2px solid #ACFF24;
+            border-radius: 8px;
+            padding: 10px 24px;
+            font-size: 20px;
+            font-weight: 800;
+            color: #ACFF24;
+            letter-spacing: 1px;
+            margin: 16px 0;
+        }
+
+        .success-screen p {
+            color: #7a9ab0;
+            font-size: 13px;
+            line-height: 1.6;
+            max-width: 400px;
+            margin: 0 auto 24px;
+        }
+
+        .submit-another-btn {
+            background: none;
+            border: 1px solid #3a5f7a;
+            color: #7ab0d0;
+            border-radius: 6px;
+            padding: 9px 20px;
+            font-size: 13px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.15s;
+        }
+
+        .submit-another-btn:hover { border-color: #ACFF24; color: #ACFF24; }
+
+        .footer-note {
+            margin-top: 28px;
+            font-size: 11px;
+            color: #3a5f7a;
+            text-align: center;
+        }
+
+        @media (max-width: 500px) {
+            .form-card { padding: 24px 20px; }
+            .form-row { grid-template-columns: 1fr; }
+            .priority-grid { grid-template-columns: 1fr 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="portal-header">
+        <div class="portal-logo"><span>🚢</span> CI Tracker</div>
+        <h1>Submit a Request</h1>
+        <p class="portal-sub">Use this form to submit supply chain issues, improvement ideas, data requests, or anything else for the CI team to review.</p>
+    </div>
+
+    <div class="form-card">
+
+        <!-- Form -->
+        <div id="submitForm">
+            <div class="form-group">
+                <label>Your Name <span class="required">*</span></label>
+                <input type="text" id="req-name" placeholder="e.g. Jane Smith" autocomplete="name">
+                <div class="error-msg" id="err-name">Please enter your name.</div>
+            </div>
+
+            <div class="form-group">
+                <label>Your Email</label>
+                <input type="email" id="req-email" placeholder="jane@company.com" autocomplete="email">
+                <div class="hint">Optional — so the CI team can follow up with you directly.</div>
+            </div>
+
+            <div class="form-group">
+                <label>Subject <span class="required">*</span></label>
+                <input type="text" id="req-title" placeholder="Brief description of your request">
+                <div class="error-msg" id="err-title">Please enter a subject.</div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Category</label>
+                    <select id="req-category">
+                        <option value="Supply Chain Issue">Supply Chain Issue</option>
+                        <option value="Process Improvement">Process Improvement</option>
+                        <option value="Cost Reduction">Cost Reduction</option>
+                        <option value="Quality Issue">Quality Issue</option>
+                        <option value="Supplier Concern">Supplier Concern</option>
+                        <option value="Data Request">Data Request</option>
+                        <option value="General Request">General Request</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Needed By</label>
+                    <input type="date" id="req-due">
+                    <div class="hint">Optional — leave blank if no deadline.</div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Priority</label>
+                <div class="priority-grid">
+                    <button type="button" class="priority-btn" data-priority="Low" onclick="selectPriority('Low')">🔵 Low</button>
+                    <button type="button" class="priority-btn selected-Medium" data-priority="Medium" onclick="selectPriority('Medium')">🟡 Medium</button>
+                    <button type="button" class="priority-btn" data-priority="High" onclick="selectPriority('High')">🔴 High</button>
+                    <button type="button" class="priority-btn" data-priority="Urgent" onclick="selectPriority('Urgent')">🚨 Urgent</button>
+                </div>
+                <input type="hidden" id="req-priority" value="Medium">
+            </div>
+
+            <div class="form-group">
+                <label>Description <span class="required">*</span></label>
+                <textarea id="req-description" placeholder="Describe the issue or request in as much detail as you can. Include: what is happening, where, how often, and any impact you've observed."></textarea>
+                <div class="error-msg" id="err-description">Please add a description.</div>
+            </div>
+
+            <button class="submit-btn" onclick="submitTicket()">Submit Request</button>
+        </div>
+
+        <!-- Success screen -->
+        <div class="success-screen" id="successScreen">
+            <div class="success-icon">✅</div>
+            <h2>Request Submitted!</h2>
+            <div class="ticket-number-display" id="ticketNumberDisplay">TKT-001</div>
+            <p>Your request has been logged and the CI team will review it shortly. Keep your ticket number for reference.</p>
+            <button class="submit-another-btn" onclick="resetForm()">Submit another request</button>
+        </div>
+
+    </div>
+
+    <div class="footer-note">SC CI Tracker &mdash; requests are reviewed by the Supply Chain CI Manager</div>
+
+    <script>
+        const STORAGE_KEY = 'sc_ci_tracker_v1';
+
+        // Set default date min to today
+        document.getElementById('req-due').min = new Date().toISOString().split('T')[0];
+
+        function selectPriority(p) {
+            document.querySelectorAll('.priority-btn').forEach(btn => {
+                btn.className = 'priority-btn';
+                if (btn.dataset.priority === p) btn.classList.add('selected-' + p);
+            });
+            document.getElementById('req-priority').value = p;
+        }
+
+        function getNextTicketNumber(tickets) {
+            if (!tickets || tickets.length === 0) return 'TKT-001';
+            let max = 0;
+            tickets.forEach(function(t) {
+                const m = (t.ticketNumber || '').match(/TKT-(\d+)/);
+                if (m) max = Math.max(max, parseInt(m[1], 10));
+            });
+            return 'TKT-' + String(max + 1).padStart(3, '0');
+        }
+
+        function clearErrors() {
+            document.querySelectorAll('.error-msg').forEach(function(e) { e.style.display = 'none'; });
+        }
+
+        function showError(id, inputId) {
+            document.getElementById(id).style.display = 'block';
+            document.getElementById(inputId).focus();
+            return false;
+        }
+
+        function submitTicket() {
+            clearErrors();
+            const name  = document.getElementById('req-name').value.trim();
+            const email = document.getElementById('req-email').value.trim();
+            const title = document.getElementById('req-title').value.trim();
+            const desc  = document.getElementById('req-description').value.trim();
+            const cat   = document.getElementById('req-category').value;
+            const pri   = document.getElementById('req-priority').value;
+            const due   = document.getElementById('req-due').value;
+
+            if (!name)  return showError('err-name', 'req-name');
+            if (!title) return showError('err-title', 'req-title');
+            if (!desc)  return showError('err-description', 'req-description');
+
+            // Read existing data
+            let data = {};
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (raw) data = JSON.parse(raw);
+            } catch(e) {}
+            if (!data.tickets) data.tickets = [];
+
+            const ticketNumber = getNextTicketNumber(data.tickets);
+
+            const ticket = {
+                id: 'ticket_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+                ticketNumber: ticketNumber,
+                title: title,
+                description: desc,
+                requesterName: name,
+                requesterEmail: email,
+                category: cat,
+                priority: pri,
+                status: 'New',
+                dueDate: due || null,
+                notes: '',
+                linkedIssueId: null,
+                submittedAt: new Date().toISOString()
+            };
+
+            data.tickets.push(ticket);
+
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            } catch(e) {
+                alert('Could not save your request. Please try again or contact the CI team directly.');
+                return;
+            }
+
+            // Show success
+            document.getElementById('ticketNumberDisplay').textContent = ticketNumber;
+            document.getElementById('submitForm').style.display = 'none';
+            document.getElementById('successScreen').style.display = 'block';
+        }
+
+        function resetForm() {
+            document.getElementById('req-name').value = '';
+            document.getElementById('req-email').value = '';
+            document.getElementById('req-title').value = '';
+            document.getElementById('req-description').value = '';
+            document.getElementById('req-due').value = '';
+            document.getElementById('req-category').selectedIndex = 0;
+            selectPriority('Medium');
+            clearErrors();
+            document.getElementById('submitForm').style.display = 'block';
+            document.getElementById('successScreen').style.display = 'none';
+        }
+    </script>
+</body>
+</html>

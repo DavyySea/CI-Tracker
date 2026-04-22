@@ -44,7 +44,7 @@
         if (contacts.length === 0) {
             container.innerHTML = `
                 <div class="empty-state">
-                    <div class="empty-state-icon">👥</div>
+                    <div class="empty-state-icon"></div>
                     <p>No contacts yet.</p>
                     <p style="font-size:13px;color:var(--muted);">Add people you work with — their names will be available to select as meeting attendees.</p>
                 </div>`;
@@ -68,7 +68,7 @@
                     ${contact.company ? `<div class="contact-company">${escapeHtml(contact.company)}</div>` : ''}
                     ${contact.title ? `<div class="contact-role">${escapeHtml(contact.title)}${contact.department ? ' · ' + escapeHtml(contact.department) : ''}</div>` : ''}
                     ${contact.email ? `<a class="contact-email" href="mailto:${escapeHtml(contact.email)}">${escapeHtml(contact.email)}</a>` : ''}
-                    ${contact.phone ? `<div class="contact-phone">📞 ${escapeHtml(contact.phone)}</div>` : ''}
+                    ${contact.phone ? `<div class="contact-phone">${escapeHtml(contact.phone)}</div>` : ''}
                     ${contact.notes ? `<div class="contact-notes">${escapeHtml(contact.notes)}</div>` : ''}
                     ${meetingCount > 0 ? `<span class="contact-meeting-badge">${meetingCount} meeting${meetingCount !== 1 ? 's' : ''}</span>` : ''}
                 </div>

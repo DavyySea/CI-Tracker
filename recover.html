@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>CI Tracker — Recovery & Tools</title>
+<style>
+body { font-family: monospace; background: #050e1a; color: #ccc; padding: 20px; max-width: 900px; }
+h1 { color: #00c8f0; }
+h2 { color: #00c8f0; font-size: 15px; margin: 0 0 10px; }
+.section { background: #091828; border: 1px solid #1a3a5c; border-radius: 8px; padding: 16px; margin: 16px 0; }
+.key { color: #00c8f0; font-weight: bold; }
+.count { color: #27ae60; }
+.warn { color: #e74c3c; }
+button { background: #00c8f0; color: #050e1a; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; margin: 4px; }
+button.danger { background: #e74c3c; color: white; }
+button.secondary { background: #1a3a5c; color: #00c8f0; border: 1px solid #00c8f0; }
+button.success { background: #27ae60; color: white; }
+textarea { width: 100%; height: 160px; background: #000; color: #0f0; font-family: monospace; font-size: 11px; border: 1px solid #1a3a5c; padding: 8px; box-sizing: border-box; margin-top: 8px; }
+#status { padding: 10px; border-radius: 6px; margin: 8px 0; min-height: 20px; }
+.ok { background: #0a3a0a; color: #27ae60; border: 1px solid #27ae60; }
+.err { background: #3a0a0a; color: #e74c3c; border: 1px solid #e74c3c; }
+table { width: 100%; border-collapse: collapse; }
+td, th { padding: 4px 8px; text-align: left; }
+th { color: #00c8f0; }
+.note-btn { display: inline-block; background: #0a2a4a; border: 1px solid #1a3a5c; border-radius: 6px; padding: 10px 14px; margin: 6px 6px 6px 0; cursor: pointer; color: #ccc; font-size: 12px; }
+.note-btn:hover { border-color: #00c8f0; color: #00c8f0; }
+.note-btn strong { display: block; color: #00c8f0; margin-bottom: 3px; }
+</style>
+</head>
+<body>
+<h1>CI Tracker — Recovery & Tools</h1>
+
+<div class="section">
+<h2>Current Data Status</h2>
+<div id="status-area">Scanning...</div>
+<br>
+<button onclick="downloadNow()" class="success">⬇ Download Full Backup NOW</button>
+<button onclick="location.href='/'">← Back to App</button>
+</div>
+
+<div class="section">
+<h2>Add Notes — One Click</h2>
+<p style="color:#888;font-size:12px;margin:0 0 10px">Click any note to inject it directly into the app, then go back to the app and navigate to Notes.</p>
+<div id="note-buttons"></div>
+<div id="status"></div>
+</div>
+
+<div class="section">
+<h2>Restore from JSON File</h2>
+<button onclick="importFromFile()" class="secondary">Import from JSON File</button>
+<br><br>
+<textarea id="paste-area" placeholder='Or paste JSON here, then click Restore Pasted Data'></textarea>
+<br>
+<button onclick="restorePasted()" class="danger">Restore Pasted Data (overwrites everything)</button>
+</div>
+
+<script>
+var NOTES = [
+  {
+    id: 'shingo-conf',
+    title: 'Shingo Conference — San Diego',
+    color: 'blue',
+    content: '<h2>Shingo Conference — San Diego</h2><h3>ROI &amp; Purpose</h3><p>Attending Shingo was a continuous learning experience — not a vacation. Goal: show the company the value and share what I learned.</p><h3>Breaking the Paradigm — Mastering Sooner</h3><ul><li><strong>Scaling Globally</strong> — mastering communication at scale</li><li><strong>Substance &gt; Sustainability</strong> — you can sustain a crappy system. Substantive transformation is the goal.</li><li><strong>Vision Alignment</strong> — Is this inspiring? Does everyone see the same vision?</li><li><strong>Communication through your team, not to your team</strong></li><li>A clear brand associated with your approach — without it, you\'ll struggle with adoption</li><li><strong>Audience. Intent. Message.</strong></li></ul><h3>What is Excellence?</h3><ul><li>Workforce engagement</li><li>Status quo — keep driving</li><li>Define targets for a common goal</li><li>Accomplishing your mission</li><li><em>"Relative to our peers we are excellent — but relative to our potential, nowhere near."</em></li></ul><h3>3 Phases of the Journey</h3><ul><li><strong>Start</strong> — Are you starting your journey?</li><li><strong>Strive</strong> — Are you striving for Shingo?</li><li><strong>Secure</strong> — Are you securing your legacy?</li></ul><p><em>Stuck between striving and securing — where do we go next?</em></p><h3>Kathy Nichols</h3><blockquote>"What if… by offering people development, engagement, connection, and inspiring a passion for performance, we change lives and make a lasting impact? What a legacy that would be?"</blockquote><p>Mastery of a skill is limiting — but true masters don\'t consider themselves masters. They are striving for more. Pushing potential past where someone thinks it\'s possible.</p><p><strong>Where is our organization running disciplined systems that produce consistent results but have stopped inspiring anyone?</strong></p><h3>The Framework</h3><p><strong>Principles → Systems → Behaviors</strong> | <strong>Align → Enable → Improve</strong></p><p>Principles → Mindset → Behaviors → Systems → Method → Skills → Mastery → Potential</p><ul><li>How we align all sites globally</li><li>How systems create environments where people take pride</li><li><strong>Improving your work should be your job — not an additional job</strong></li><li>Great orgs follow a structural approach to designing systems that deliver an experience, align behavior, and drive performance</li></ul><h3>Culture &amp; Onboarding</h3><ul><li>How do you onboard for culture? Standard behavior? Standard mindsets?</li><li>Coaching program, success path, management system, critical process</li><li>What does coaching look like internally?</li><li>How do leaders ensure results — and what are those results defined as?</li></ul><h3>Design Principles</h3><ul><li><strong>Integration over Addition</strong></li><li><strong>Standardization with Flexibility</strong></li><li><strong>Experience-Based Design</strong></li><li><strong>Built for Coaching</strong> — Can others do it? How quickly? How much do they want to?</li><li><strong>Closed-Loop Accountability</strong> — Do they get it? Do they want it? Can they do it?</li></ul><h3>Books</h3><ul><li><em>Own the Gap</em></li><li><em>Management Omotenashi</em></li></ul>'
+  },
+  {
+    id: 'culture-ci',
+    title: 'Developing a Culture of CI — Toyota Kata',
+    color: 'teal',
+    content: '<h2>Developing a Culture of CI</h2><p><strong>Everybody — Every Process — Every Day</strong></p><h3>Developing Behavior &amp; Establishing Habits</h3><ul><li>We naturally gravitate towards explanations and solutions we already know</li></ul><h3>The Toyota Kata</h3><p>Researcher: <strong>Mike Rother</strong></p><p><strong>Kata</strong> — A practice routine (set of steps) for developing a new skill or behavior</p><p>I am the Continuous Improvement Manager for Supply Chain — this directly impacts my learning and growth.</p>'
+  }
+];
+
+function setStatus(msg, ok) {
+  var el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = ok ? 'ok' : 'err';
+}
+
+function getOrInitData() {
+  var raw = localStorage.getItem('sc_ci_tracker_v1');
+  return raw ? JSON.parse(raw) : {};
+}
+
+function showStatus() {
+  var el = document.getElementById('status-area');
+  var raw = localStorage.getItem('sc_ci_tracker_v1');
+  if (!raw) {
+    el.innerHTML = '<span class="warn">sc_ci_tracker_v1 is EMPTY — no data in localStorage</span>';
+    return;
+  }
+  try {
+    var d = JSON.parse(raw);
+    var html = '<table><tr><th>Section</th><th>Count</th></tr>';
+    var sections = ['projects','meetings','contacts','issues','notes','kpis','scAreas','goals','costAnalysis'];
+    for (var s of sections) {
+      var v = d[s];
+      var cnt = Array.isArray(v) ? v.length : (v && typeof v === 'object' ? Object.keys(v).length + ' keys' : String(v||''));
+      html += '<tr><td class="key">' + s + '</td><td class="count">' + cnt + '</td></tr>';
+    }
+    html += '</table>';
+    html += '<p style="color:#888;font-size:11px;margin:8px 0 0">Storage size: ' + (raw.length/1024).toFixed(1) + ' KB</p>';
+    el.innerHTML = html;
+  } catch(e) {
+    el.innerHTML = '<span class="warn">Parse error: ' + e.message + '</span>';
+  }
+}
+
+function buildNoteButtons() {
+  var container = document.getElementById('note-buttons');
+  NOTES.forEach(function(note) {
+    var btn = document.createElement('div');
+    btn.className = 'note-btn';
+    btn.innerHTML = '<strong>' + note.title + '</strong>Click to inject into app';
+    btn.onclick = function() { injectNote(note); };
+    container.appendChild(btn);
+  });
+}
+
+function injectNote(note) {
+  try {
+    var data = getOrInitData();
+    if (!data.notes) data.notes = [];
+    // Remove existing version if present
+    data.notes = data.notes.filter(function(n) { return n.id !== note.id; });
+    var now = new Date().toISOString();
+    data.notes.push({ id: note.id, title: note.title, body: note.content, color: note.color, pinned: false, createdAt: now, updatedAt: now });
+    localStorage.setItem('sc_ci_tracker_v1', JSON.stringify(data));
+    setStatus('✓ "' + note.title + '" saved! Now go to the app → Notes page.', true);
+    showStatus();
+  } catch(e) {
+    setStatus('Error: ' + e.message, false);
+  }
+}
+
+function injectAllNotes() {
+  NOTES.forEach(function(note) { injectNote(note); });
+  setStatus('✓ All notes saved! Go to the app → Notes page.', true);
+}
+
+function downloadNow() {
+  var raw = localStorage.getItem('sc_ci_tracker_v1');
+  if (!raw) { alert('No data to download'); return; }
+  var a = document.createElement('a');
+  var today = new Date().toISOString().slice(0,10);
+  a.href = 'data:application/json,' + encodeURIComponent(raw);
+  a.download = 'ci-tracker-backup-' + today + '.json';
+  a.click();
+}
+
+function importFromFile() {
+  var input = document.createElement('input');
+  input.type = 'file'; input.accept = '.json';
+  input.onchange = function(e) {
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+      try {
+        JSON.parse(ev.target.result);
+        document.getElementById('paste-area').value = ev.target.result;
+        setStatus('File loaded — review then click Restore Pasted Data', true);
+      } catch(err) { setStatus('Invalid JSON: ' + err.message, false); }
+    };
+    reader.readAsText(e.target.files[0]);
+  };
+  input.click();
+}
+
+function restorePasted() {
+  var text = document.getElementById('paste-area').value.trim();
+  if (!text) { setStatus('Nothing to restore', false); return; }
+  try {
+    var parsed = JSON.parse(text);
+    if (!confirm('Overwrite ALL current data with pasted JSON?')) return;
+    localStorage.setItem('sc_ci_tracker_v1', JSON.stringify(parsed));
+    setStatus('✓ Restored! Go back to the app and hard-refresh (Cmd+Shift+R)', true);
+    showStatus();
+  } catch(e) { setStatus('Invalid JSON: ' + e.message, false); }
+}
+
+showStatus();
+buildNoteButtons();
+</script>
+</body>
+</html>

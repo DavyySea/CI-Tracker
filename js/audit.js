@@ -71,15 +71,15 @@
 
     function getAuditIcon(action) {
         const icons = {
-            'create': '➕',
-            'update': '✏️',
-            'delete': '🗑️',
-            'close': '✅',
-            'reopen': '🔄',
-            'export': '📤',
-            'import': '📥'
+            'create': '+',
+            'update': 'Edit',
+            'delete': 'Delete',
+            'close': 'Close',
+            'reopen': '',
+            'export': '',
+            'import': ''
         };
-        return icons[action] || '📝';
+        return icons[action] || '';
     }
 
     function formatTimestamp(date) {

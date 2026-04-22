@@ -7,13 +7,13 @@
     'use strict';
 
     const DEFAULT_AREAS = [
-        { id: 'Planning',        icon: '📅', label: 'Planning',        stakeholderIds: [] },
-        { id: 'Buying',          icon: '🛒', label: 'Buying',          stakeholderIds: [] },
-        { id: 'Receiving',       icon: '📦', label: 'Receiving',       stakeholderIds: [] },
-        { id: 'Warehouse',       icon: '🏪', label: 'Warehouse',       stakeholderIds: [] },
-        { id: 'Logistics',       icon: '🚚', label: 'Logistics',       stakeholderIds: [] },
-        { id: 'Supplier Quality',icon: '✅', label: 'Supplier Quality', stakeholderIds: [] },
-        { id: 'Scheduling',      icon: '🗓️', label: 'Scheduling',      stakeholderIds: [] },
+        { id: 'Planning',        icon: '', label: 'Planning',        stakeholderIds: [] },
+        { id: 'Buying',          icon: '', label: 'Buying',          stakeholderIds: [] },
+        { id: 'Receiving',       icon: '', label: 'Receiving',       stakeholderIds: [] },
+        { id: 'Warehouse',       icon: '', label: 'Warehouse',       stakeholderIds: [] },
+        { id: 'Logistics',       icon: '', label: 'Logistics',       stakeholderIds: [] },
+        { id: 'Supplier Quality',icon: '', label: 'Supplier Quality', stakeholderIds: [] },
+        { id: 'Scheduling',      icon: '', label: 'Scheduling',      stakeholderIds: [] },
     ];
 
     const IMPROVEMENT_TYPES = [
@@ -22,7 +22,7 @@
         'Automation', 'Supplier Development', 'Other'
     ];
 
-    const ICONS = ['📅','🛒','📦','🏪','🚚','✅','🗓️','🏭','📊','🔧','⚙️','📐','🎯','💡','🔄','📋','🏗️','🌐'];
+    const ICONS = [];
 
     function escapeHtml(text) {
         if (!text) return '';
@@ -71,7 +71,7 @@
         if (areas.length === 0) {
             container.innerHTML = `
                 <div class="empty-state" style="grid-column:1/-1;">
-                    <div class="empty-state-icon">🗂️</div>
+                    <div class="empty-state-icon"></div>
                     <p>No areas yet. Add your first supply chain area.</p>
                 </div>`;
             return;
@@ -233,7 +233,7 @@
 
         const area = areaId ? getAreas().find(a => a.id === areaId) : null;
         const iconOptions = ICONS.map(icon =>
-            `<option value="${icon}" ${(area?.icon || '📋') === icon ? 'selected' : ''}>${icon}</option>`
+            `<option value="${icon}" ${(area?.icon || '') === icon ? 'selected' : ''}>${icon}</option>`
         ).join('');
 
         document.body.insertAdjacentHTML('beforeend', `
@@ -359,7 +359,7 @@
                         ${imp.owner ? `<span>• ${escapeHtml(imp.owner)}</span>` : ''}
                         <span>• ${imp.date}</span>
                     </div>
-                    ${imp.impact ? `<div class="improvement-impact">📈 ${escapeHtml(imp.impact)}</div>` : ''}
+                    ${imp.impact ? `<div class="improvement-impact">${escapeHtml(imp.impact)}</div>` : ''}
                     <div class="improvement-item-actions">
                         <button class="btn-link" onclick="editImprovement('${imp.id}')">Edit</button>
                         <button class="btn-link btn-link-danger" onclick="deleteImprovement('${imp.id}')">Delete</button>
@@ -410,10 +410,10 @@
                                             <span>• ${imp.date}</span>
                                         </div>
                                         ${imp.description ? `<div class="improvement-description">${escapeHtml(imp.description)}</div>` : ''}
-                                        ${imp.impact ? `<div class="improvement-impact">📈 ${escapeHtml(imp.impact)}</div>` : ''}
+                                        ${imp.impact ? `<div class="improvement-impact">${escapeHtml(imp.impact)}</div>` : ''}
                                         ${imp.linkedProjectId ? (() => {
                                             const proj = (app.data.projects || []).find(p => p.id === imp.linkedProjectId);
-                                            return proj ? `<div class="improvement-meta">📋 Linked project: ${escapeHtml(proj.title)}</div>` : '';
+                                            return proj ? `<div class="improvement-meta">Linked project: ${escapeHtml(proj.title)}</div>` : '';
                                         })() : ''}
                                         <div class="improvement-item-actions">
                                             <button class="btn-link"

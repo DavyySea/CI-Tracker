@@ -137,9 +137,9 @@
                 <div class="kanban-card-title">${escapeHtml(p.title)}</div>
                 <div class="kanban-card-meta">
                     <span>${escapeHtml(p.area)}</span>
-                    ${p.owner ? `<span>👤 ${escapeHtml(p.owner)}</span>` : ''}
-                    ${p.dueDate ? `<span>📅 Due: ${p.dueDate}${overdue ? ' ⚠️' : ''}</span>` : ''}
-                    ${openActions > 0 ? `<span>📋 ${openActions} open action${openActions !== 1 ? 's' : ''}${blockedActions > 0 ? ` (${blockedActions} blocked)` : ''}</span>` : ''}
+                    ${p.owner ? `<span>${escapeHtml(p.owner)}</span>` : ''}
+                    ${p.dueDate ? `<span>Due: ${p.dueDate}${overdue ? ' !' : ''}</span>` : ''}
+                    ${openActions > 0 ? `<span>${openActions} open action${openActions !== 1 ? 's' : ''}${blockedActions > 0 ? ` (${blockedActions} blocked)` : ''}</span>` : ''}
                 </div>
                 <div class="kanban-card-badges">
                     <span class="health-badge ${healthClass}">${p.health}</span>
@@ -202,10 +202,10 @@
                  style="border-left:4px solid ${overdue ? 'var(--danger)' : 'var(--border-2)'};">
                 <div class="kanban-card-title">${escapeHtml(a.text)}</div>
                 <div class="kanban-card-meta">
-                    <span>📋 ${escapeHtml(a.projectTitle)}</span>
-                    ${a.owner ? `<span>👤 ${escapeHtml(a.owner)}</span>` : ''}
-                    ${a.dueDate ? `<span>📅 Due: ${a.dueDate}${overdue ? ' ⚠️' : ''}</span>` : ''}
-                    ${a.blockerNote ? `<span style="color:var(--danger)">🚫 ${escapeHtml(a.blockerNote)}</span>` : ''}
+                    <span>${escapeHtml(a.projectTitle)}</span>
+                    ${a.owner ? `<span>${escapeHtml(a.owner)}</span>` : ''}
+                    ${a.dueDate ? `<span>Due: ${a.dueDate}${overdue ? ' !' : ''}</span>` : ''}
+                    ${a.blockerNote ? `<span style="color:var(--danger)">${escapeHtml(a.blockerNote)}</span>` : ''}
                 </div>
             </div>`;
     }
