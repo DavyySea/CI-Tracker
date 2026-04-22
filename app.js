@@ -126,9 +126,9 @@ function updateThemeButton(theme) {
 }
 
 // Initialize app on page load
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     initTheme();
-    loadData();
+    await loadData();
     initFileBackup();
     initNavigation();
     renderCurrentPage();
@@ -179,7 +179,7 @@ function _checkDailyBackup(json) {
     } catch(e) {}
 }
 
-function loadData() {
+async function loadData() {
     try {
         const stored = localStorage.getItem(STORAGE_KEY);
         let parsed = null;
@@ -204,19 +204,14 @@ function loadData() {
             showToast('Data restored from backup' + (ts ? ' (' + new Date(ts).toLocaleDateString() + ')' : ''), 'success');
             return;
         }
-        // Nothing saved yet — load default data from repo, fall back to seed
-        fetch('default-data.json')
-            .then(r => r.json())
-            .then(defaultData => {
-                app.data = defaultData;
-                saveData();
-                location.reload();
-            })
-            .catch(() => {
-                seedSampleData();
-                saveData();
-            });
-        return;
+        // Nothing saved yet — load default data, fall back to seed
+        try {
+            const r = await fetch('default-data.json');
+            app.data = await r.json();
+        } catch(e) {
+            seedSampleData();
+        }
+        saveData();
     } catch (e) {
         console.error('[loadData] FAILED:', e);
         showToast('Failed to load data', 'error');
