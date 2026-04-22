@@ -204,9 +204,19 @@ function loadData() {
             showToast('Data restored from backup' + (ts ? ' (' + new Date(ts).toLocaleDateString() + ')' : ''), 'success');
             return;
         }
-        // Nothing saved yet — seed
-        seedSampleData();
-        saveData();
+        // Nothing saved yet — load default data from repo, fall back to seed
+        fetch('default-data.json')
+            .then(r => r.json())
+            .then(defaultData => {
+                app.data = defaultData;
+                saveData();
+                location.reload();
+            })
+            .catch(() => {
+                seedSampleData();
+                saveData();
+            });
+        return;
     } catch (e) {
         console.error('[loadData] FAILED:', e);
         showToast('Failed to load data', 'error');
