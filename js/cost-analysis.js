@@ -33,6 +33,14 @@
 
     function initCostAnalysisModule() {
         ensureCostAnalysisData();
+        // Focus table wrapper on hover so scroll wheel works without clicking first
+        document.getElementById('page-cost-analysis').addEventListener('mouseover', function(e) {
+            var wrap = e.target.closest('.cost-table-wrap');
+            if (wrap && document.activeElement !== wrap) {
+                wrap.tabIndex = -1;
+                wrap.focus({ preventScroll: true });
+            }
+        });
     }
 
     function ensureCostAnalysisData() {

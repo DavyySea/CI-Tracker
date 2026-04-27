@@ -5831,6 +5831,7 @@ kbd {
     overflow: auto;
     max-height: calc(100vh - 380px);
     min-height: 300px;
+    outline: none;
 }
 #page-cost-analysis .cost-table thead th {
     position: sticky;
