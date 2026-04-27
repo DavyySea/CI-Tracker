@@ -6416,7 +6416,7 @@ body {
 .cost-table-wrap, .table-wrap {
     border-radius: var(--radius-lg);
     border: 1px solid var(--border);
-    overflow: hidden;
+    overflow-x: auto;
 }
 
 .cost-table th, .data-table th {
