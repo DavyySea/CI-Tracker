@@ -6458,7 +6458,6 @@
         { key: 'no-raw-mat',  label: 'No Raw Material',   color: '#a78bfa', test: function(p) { return p.inHouse && !p.inHouse.rawMaterialId; } },
         { key: 'no-uom',      label: 'No UOM',            color: '#38bdf8', test: function(p) { return !p.unitOfMeasure || !p.unitOfMeasure.trim(); } },
         { key: 'no-commodity',label: 'No Commodity',      color: '#34d399', test: function(p) { return !p.commodity || !p.commodity.trim(); } },
-        { key: 'no-rfq',      label: 'No RFQs',           color: '#60a5fa', test: function(p) { return !p.rfqs || p.rfqs.length === 0; } },
         { key: 'no-desc',     label: 'No Description',    color: '#f472b6', test: function(p) { return !p.description || !p.description.trim(); } },
     ];
 
