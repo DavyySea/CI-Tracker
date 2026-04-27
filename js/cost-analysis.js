@@ -374,25 +374,14 @@
                 </div>
             </header>
 
-            ${renderExpiryAlertBanner()}
-
             <div class="cost-kpi-strip">
                 <div class="cost-kpi-card">
                     <div class="cost-kpi-value">${summary.partCount}</div>
                     <div class="cost-kpi-label">Parts Tracked</div>
                 </div>
-                ${(() => { const r = _countExpiringRFQs(); const issues = r.expired + r.expiring + r.singleSource; return issues > 0 ? '<div class="cost-kpi-card cost-kpi-risk" style="cursor:pointer;" onclick="window._ca.showSupplyRisks(\'all\')" title="Click to view all supply risks"><div class="cost-kpi-value" style="color:#ff6b6b;">' + issues + '</div><div class="cost-kpi-label">Supply Risks ↗</div></div>' : ''; })()}
                 <div class="cost-kpi-card">
                     <div class="cost-kpi-value">${fmt$(summary.currentSpendPerBoat)}</div>
                     <div class="cost-kpi-label">Current $/Boat</div>
-                </div>
-                <div class="cost-kpi-card">
-                    <div class="cost-kpi-value">${fmt$(summary.bestSpendPerBoat)}</div>
-                    <div class="cost-kpi-label">Best Available $/Boat</div>
-                </div>
-                <div class="cost-kpi-card ${summary.savingsPerBoat > 0 ? 'cost-kpi-savings' : ''}">
-                    <div class="cost-kpi-value">${fmt$(summary.savingsPerBoat)}</div>
-                    <div class="cost-kpi-label">Savings/Boat</div>
                 </div>
                 <div class="cost-kpi-card ${summary.annualSavings > 0 ? 'cost-kpi-savings' : ''}">
                     <div class="cost-kpi-value">${fmt$(summary.annualSavings)}</div>
@@ -1276,32 +1265,6 @@
                 ? escapeHtml(p.partNumber) + revBadge + aliasHtml + ' <span class="cost-archived-badge">Previous</span>'
                 : '<strong>' + escapeHtml(p.partNumber) + '</strong>' + revBadge + aliasHtml;
 
-            const bestCell = bestPerBoat !== null
-                ? '<span class="' + (isSaving ? 'savings-positive' : '') + '">' + fmt$(bestPerBoat) + '</span>'
-                : '<span class="muted">No RFQ</span>';
-            const bestUnitCell = bestCost !== null ? fmt$(bestCost) : '<span class="muted">—</span>';
-            const bestSupplierCell = best ? escapeHtml(best.supplier) : '<span class="muted">—</span>';
-            const today = new Date(); today.setHours(0,0,0,0);
-            const soonMs = 30 * 24 * 60 * 60 * 1000;
-            let rfqStatusBadge = '';
-            if (!best && !(p.rfqs && p.rfqs.length)) {
-                rfqStatusBadge = ' <span class="cost-risk-badge" title="No competitive quotes — sole source">! Single Source</span>';
-            } else if (best && best.validUntil) {
-                const expDate = new Date(best.validUntil);
-                if (expDate < today) {
-                    rfqStatusBadge = '';
-                } else if ((expDate - today) <= soonMs) {
-                    rfqStatusBadge = ' <span class="cost-expiring-badge" title="Best RFQ expires within 30 days">Exp. soon</span>';
-                }
-            }
-            const ltDays = best && best.leadTimeDays ? best.leadTimeDays : null;
-            const ltCell = ltDays ? ltDays + ' d' : '<span class="muted">—</span>';
-            const savingsCell = savingsPerBoat !== null
-                ? '<span class="' + (savingsPerBoat > 0 ? 'savings-positive' : savingsPerBoat < 0 ? 'savings-negative' : '') + '">' + fmt$(savingsPerBoat) + '</span>'
-                : '<span class="muted">—</span>';
-            const pctCell = savingsPct !== null
-                ? '<span class="' + (savingsPct > 0 ? 'savings-positive' : savingsPct < 0 ? 'savings-negative' : '') + '">' + fmtPct(savingsPct) + '</span>'
-                : '<span class="muted">—</span>';
 
             const qtyPurchased = p.currentQtyPurchased != null ? p.currentQtyPurchased : '—';
             const poTotal = (p.currentQtyPurchased != null && cur > 0)
@@ -1318,17 +1281,10 @@
 
             const actionsCell = isPredecessor
                 ? '<button class="btn btn-secondary btn-small" onclick="window._ca.showPartDetailModal(\'' + p.id + '\')">⋯</button>'
-                : '<button class="btn btn-secondary btn-small" onclick="window._ca.showAddRFQModal(\'' + p.id + '\')">+ RFQ</button>' +
-                  ' <button class="btn btn-secondary btn-small" onclick="window._ca.showInHouseCostModal(\'' + p.id + '\')" title="In-House Cost">In-House</button>' +
+                : '<button class="btn btn-secondary btn-small" onclick="window._ca.showInHouseCostModal(\'' + p.id + '\')" title="In-House Cost">In-House</button>' +
                   ' <button class="btn btn-secondary btn-small" onclick="window._ca.showPartDetailModal(\'' + p.id + '\')">⋯</button>';
 
-            let rowClass = isPredecessor ? 'cost-predecessor-row' : '';
-            if (!isPredecessor && best && best.validUntil) {
-                const vd = new Date(best.validUntil); const td2 = new Date(); td2.setHours(0,0,0,0);
-                if (vd < td2) rowClass += ' rfq-expired';
-                else if ((vd - td2) <= soonMs) rowClass += ' rfq-expiring';
-            }
-            if (!isPredecessor && best && Number(best.leadTimeDays) > 60) rowClass += ' rfq-long-lt';
+            const rowClass = isPredecessor ? 'cost-predecessor-row' : '';
             var finishBadge = '';
             var finishAdder = 0;
             if (p.surfaceFinish && p.surfaceFinish.type) {
@@ -1348,12 +1304,6 @@
                 '<td>' + poTotal + '</td>' +
                 '<td>' + ihCell + '</td>' +
                 '<td>' + fmt$(curPerBoat) + '</td>' +
-                '<td>' + bestSupplierCell + rfqStatusBadge + '</td>' +
-                '<td>' + bestUnitCell + '</td>' +
-                '<td>' + bestCell + '</td>' +
-                '<td>' + ltCell + '</td>' +
-                '<td>' + savingsCell + '</td>' +
-                '<td>' + pctCell + '</td>' +
                 '<td class="cost-table-actions">' + actionsCell + '</td>' +
                 '</tr>';
         }
@@ -1379,12 +1329,6 @@
             _thSort('PO Qty','poQty',_compSortCol,_compSortDir,'_setCompSort') +
             '<th>PO Total</th><th>In-House $/unit</th>' +
             _thSort('Current $/boat','curBoat',_compSortCol,_compSortDir,'_setCompSort') +
-            '<th>Best RFQ Supplier</th>' +
-            _thSort('Best $/unit','bestUnit',_compSortCol,_compSortDir,'_setCompSort') +
-            _thSort('Best $/boat','bestBoat',_compSortCol,_compSortDir,'_setCompSort') +
-            '<th title="Lead time in days from best RFQ">Best LT</th>' +
-            _thSort('Savings/boat','savingsBoat',_compSortCol,_compSortDir,'_setCompSort') +
-            _thSort('Savings %','savingsPct',_compSortCol,_compSortDir,'_setCompSort') +
             '<th>Actions</th>' +
             '</tr></thead>' +
             '<tbody>' + tableRows + '</tbody>' +
