@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=100">
+    <link rel="stylesheet" href="styles.css?v=102">
     <style>
         /* Inline tokens — full system in styles.css. These keep the page
            usable even before the external CSS finishes loading. */
@@ -50,6 +50,12 @@
         <div class="ambient-glow g1"></div>
         <div class="ambient-glow g2"></div>
         <div class="ambient-glow g3"></div>
+    </div>
+
+    <!-- Custom cursor (hidden on touch devices, disabled by prefers-reduced-motion) -->
+    <div class="cursor" id="cursor" aria-hidden="true">
+        <div class="cursor-glow" id="cursor-glow"></div>
+        <div class="cursor-dot"></div>
     </div>
 
     <!-- Toast Notifications -->
@@ -1831,5 +1837,55 @@
     <script src="js/spc.js?v=3"></script>
     <script src="js/shingo-model.js?v=5"></script>
     <script src="js/emoji-style.js?v=5"></script>
+
+    <script>
+    /* ───── Custom cursor (Phase 1.5) ─────
+       Smooth-following glow cursor with hover amplification.
+       Hides on touch devices, disabled by prefers-reduced-motion. */
+    (function () {
+        const isTouch = matchMedia('(hover: none)').matches;
+        const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (isTouch || reduced) {
+            const c = document.getElementById('cursor');
+            if (c) c.style.display = 'none';
+            return;
+        }
+
+        const cursor = document.getElementById('cursor');
+        const glow = document.getElementById('cursor-glow');
+        if (!cursor || !glow) return;
+
+        let mx = window.innerWidth / 2, my = window.innerHeight / 2;
+        let cx = mx, cy = my;
+
+        document.addEventListener('mousemove', (e) => {
+            mx = e.clientX; my = e.clientY;
+        }, { passive: true });
+
+        function tick() {
+            cx += (mx - cx) * 0.18;
+            cy += (my - cy) * 0.18;
+            cursor.style.transform = 'translate(' + cx + 'px, ' + cy + 'px) translate(-50%, -50%)';
+            requestAnimationFrame(tick);
+        }
+        tick();
+
+        const interactiveSel = 'a, button, input, select, textarea, .nav-link, .btn, .btn-topbar, .card, .dashboard-subcard, .sm-pcard, .issue-card, .kpi-card, .project-card, .meeting-card, .contact-card, .product-card, .area-card, .supplier-card, .note-card, [role="button"], [data-row-toggle], .vessel-head, .row, .activity-row, .kanban-card, .calendar-grid > *, .cost-table tbody tr, .sm-tab, .sm-d-cell, .sm-pcard-head';
+
+        document.body.addEventListener('mouseover', (e) => {
+            if (e.target.closest(interactiveSel)) glow.classList.add('amplified');
+        });
+        document.body.addEventListener('mouseout', (e) => {
+            if (e.target.closest(interactiveSel)) glow.classList.remove('amplified');
+        });
+        document.addEventListener('mousedown', () => {
+            glow.classList.add('click-pulse');
+            setTimeout(() => glow.classList.remove('click-pulse'), 400);
+        });
+
+        document.addEventListener('mouseleave', () => cursor.style.opacity = '0');
+        document.addEventListener('mouseenter', () => cursor.style.opacity = '1');
+    })();
+    </script>
 </body>
 </html>
