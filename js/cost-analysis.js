@@ -2835,6 +2835,27 @@
                         </div>
                     </div>
 
+                    ${(function() {
+                        if (!part || !part.inHouse) return '';
+                        const rms = app.data.costAnalysis.rawMaterials || [];
+                        const currentRmId = part.inHouse.rawMaterialId || '';
+                        const opts = rms.map(function(rm) {
+                            const sel = rm.id === currentRmId ? ' selected' : '';
+                            return '<option value="' + rm.id + '"' + sel + '>' +
+                                escapeHtml(rm.partNumber) +
+                                (rm.description ? ' — ' + escapeHtml(rm.description) : '') +
+                                '</option>';
+                        }).join('');
+                        return '<div class="cost-form-section-label">Raw Material</div>' +
+                            '<div class="form-group">' +
+                            '<label class="form-label">Raw Material</label>' +
+                            '<select class="form-control" id="ca-raw-material">' +
+                            '<option value="">— none —</option>' + opts +
+                            '</select>' +
+                            '<small class="muted" style="font-size:11px;">Link to a raw material from the Raw Materials library.</small>' +
+                            '</div>';
+                    })()}
+
                     <div class="cost-form-section-label">Part Lineage</div>
                     <div class="form-group">
                         <label class="form-label">Supersedes Part</label>
@@ -2916,7 +2937,14 @@
         let savedPartId = partId;
         if (partId) {
             const idx = parts.findIndex(p => p.id === partId);
-            if (idx >= 0) Object.assign(parts[idx], fields);
+            if (idx >= 0) {
+                Object.assign(parts[idx], fields);
+                // Save raw material selection if this is an in-house part
+                const rmEl = document.getElementById('ca-raw-material');
+                if (rmEl && parts[idx].inHouse) {
+                    parts[idx].inHouse.rawMaterialId = rmEl.value || null;
+                }
+            }
         } else {
             const np = Object.assign({ id: generateId(), rfqs: [], inHouse: null }, fields);
             parts.push(np);
@@ -4513,103 +4541,102 @@
                     <h2>In-House Cost — ${escapeHtml(part.partNumber)}</h2>
                     <button class="modal-close" onclick="document.getElementById('caIHModal').remove()">&times;</button>
                 </div>
-                <div class="modal-body">
-                    <div class="form-group" style="max-width:240px; margin-bottom:16px;">
-                        <label class="form-label">Quantity Ran In-House (batch size)</label>
-                        <input type="number" class="form-control" id="ca-ih-qty" value="${_ihQty}" min="1" step="1"
-                            oninput="window._ca._ihQtyChange(this.value)">
-                        <small style="color:var(--muted); font-size:11px;">Hours below are totals for this batch — divided by qty to get $/unit.</small>
-                    </div>
-
-                    <div class="cost-table-wrap" style="margin-bottom:12px;">
-                        <table class="cost-table" id="ca-ih-ops-table">
-                            <thead>
-                                <tr>
-                                    <th>Work Center / Machine</th>
-                                    <th>Hours</th>
-                                    <th>Rate / hr ($)</th>
-                                    <th>Machine Cost</th>
-                                    <th></th>
-                                </tr>
-                            </thead>
-                            <tbody id="ca-ih-ops-body">
-                                ${_ihOps.map(op => ihOpRow(op)).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                    <button class="btn btn-secondary btn-small" onclick="window._ca._ihAddRow()" style="margin-bottom:20px;">+ Add Machine</button>
-
-                    <div class="cost-form-section-label">Labor</div>
-                    <div class="cost-table-wrap" style="margin-bottom:12px;">
-                        <table class="cost-table" id="ca-ih-labor-table">
-                            <thead>
-                                <tr>
-                                    <th>Task / Role</th>
-                                    <th>Hours</th>
-                                    <th>Rate / hr ($)</th>
-                                    <th>Labor Cost</th>
-                                    <th></th>
-                                </tr>
-                            </thead>
-                            <tbody id="ca-ih-labor-body">
-                                ${_ihLaborOps.map(op => ihLaborRow(op)).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                    <button class="btn btn-secondary btn-small" onclick="window._ca._ihAddLaborRow()" style="margin-bottom:20px;">+ Add Labor</button>
-
-                    <div class="cost-form-section-label">Raw Material</div>
-                    <div class="form-group">
-                        <label class="form-label">Select Raw Material</label>
-                        <select class="form-control" id="ca-ih-mat-select" onchange="window._ca._ihMatSelectChange(this.value)">
-                            <option value="">— None —</option>
-                            ${rmOptions}
-                        </select>
-                        ${noMatsHint}
-                    </div>
-                    <div id="ca-ih-mat-info" style="${selRm ? '' : 'display:none;'} margin-bottom:12px;">
-                        ${initInfoHtml}
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Used per Part (<span id="ca-ih-mat-uom-label">${escapeHtml(uomLabel)}</span>)</label>
-                            <input type="number" class="form-control" id="ca-ih-mat-used" value="${usedPer}" min="0" step="0.0001" placeholder="0.0000"
-                                oninput="window._ca._ihUpdateTotal()">
-                            <small class="muted" style="font-size:11px;">How many UOM units each finished part consumes.</small>
+                <div class="modal-body" style="padding:16px 20px;">
+                    <div class="ih-modal-layout">
+                        <div class="ih-modal-left">
+                            <div class="form-group" style="max-width:220px; margin-bottom:10px;">
+                                <label class="form-label">Batch Qty — <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:10px;color:var(--text-3);">hours below ÷ qty = $/unit</span></label>
+                                <input type="number" class="form-control" id="ca-ih-qty" value="${_ihQty}" min="1" step="1"
+                                    oninput="window._ca._ihQtyChange(this.value)">
+                            </div>
+                            <div class="cost-form-section-label" style="margin-top:0;">Machine Operations</div>
+                            <div class="cost-table-wrap" style="margin-bottom:8px;">
+                                <table class="cost-table" id="ca-ih-ops-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Work Center / Machine</th>
+                                            <th>Hours</th>
+                                            <th>Rate / hr ($)</th>
+                                            <th>Machine Cost</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="ca-ih-ops-body">
+                                        ${_ihOps.map(op => ihOpRow(op)).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <button class="btn btn-secondary btn-small" onclick="window._ca._ihAddRow()" style="margin-bottom:14px;">+ Add Machine</button>
+                            <div class="cost-form-section-label">Labor</div>
+                            <div class="cost-table-wrap" style="margin-bottom:8px;">
+                                <table class="cost-table" id="ca-ih-labor-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Task / Role</th>
+                                            <th>Hours</th>
+                                            <th>Rate / hr ($)</th>
+                                            <th>Labor Cost</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="ca-ih-labor-body">
+                                        ${_ihLaborOps.map(op => ihLaborRow(op)).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <button class="btn btn-secondary btn-small" onclick="window._ca._ihAddLaborRow()">+ Add Labor</button>
                         </div>
-                        <div class="form-group">
-                            <label class="form-label">Material $/part</label>
-                            <input type="text" class="form-control" id="ca-ih-mat-cost-per-part" readonly
-                                style="background:var(--surface-2); color:var(--muted);" placeholder="auto-calculated">
+                        <div class="ih-modal-right">
+                            <div class="cost-form-section-label" style="margin-top:0;">Raw Material</div>
+                            <div class="form-group">
+                                <label class="form-label">Select Raw Material</label>
+                                <select class="form-control" id="ca-ih-mat-select" onchange="window._ca._ihMatSelectChange(this.value)">
+                                    <option value="">— None —</option>
+                                    ${rmOptions}
+                                </select>
+                                ${noMatsHint}
+                            </div>
+                            <div id="ca-ih-mat-info" style="${selRm ? '' : 'display:none;'} margin-bottom:10px;">
+                                ${initInfoHtml}
+                            </div>
+                            <div class="form-row" style="gap:8px;">
+                                <div class="form-group" style="margin-bottom:8px;">
+                                    <label class="form-label">Used per Part (<span id="ca-ih-mat-uom-label">${escapeHtml(uomLabel)}</span>)</label>
+                                    <input type="number" class="form-control" id="ca-ih-mat-used" value="${usedPer}" min="0" step="0.0001" placeholder="0.0000"
+                                        oninput="window._ca._ihUpdateTotal()">
+                                </div>
+                                <div class="form-group" style="margin-bottom:8px;">
+                                    <label class="form-label">Material $/part</label>
+                                    <input type="text" class="form-control" id="ca-ih-mat-cost-per-part" readonly
+                                        style="background:var(--surface-2); color:var(--muted);" placeholder="auto-calc">
+                                </div>
+                            </div>
+                            <div class="form-row" style="gap:8px;">
+                                <div class="form-group" style="margin-bottom:8px;">
+                                    <label class="form-label">Qty Bought (ref)</label>
+                                    <input type="number" class="form-control" id="ca-ih-mat-qty" value="${matQtyBought}" min="0" step="0.001" placeholder="0">
+                                </div>
+                                <div class="form-group" style="margin-bottom:8px;">
+                                    <label class="form-label">Total Batch Material</label>
+                                    <input type="text" class="form-control" id="ca-ih-mat-total-ro" readonly
+                                        style="background:var(--surface-2); color:var(--muted);" placeholder="auto-calc">
+                                </div>
+                            </div>
+                            <div class="form-group" style="margin-bottom:10px; max-width:140px;">
+                                <label class="form-label">Overhead (%)</label>
+                                <input type="number" class="form-control" id="ca-ih-oh" value="${ohPct}" min="0" step="0.1" placeholder="0"
+                                    oninput="window._ca._ihUpdateTotal()">
+                            </div>
+                            <div class="cost-ih-total-stack">
+                                <span>Machine</span><span id="ca-ih-mach-total">—</span>
+                                <span>Labor</span><span id="ca-ih-labor-total">—</span>
+                                <span>Material</span><span id="ca-ih-mat-display">—</span>
+                                <span>Overhead</span><span id="ca-ih-oh-display">—</span>
+                                <hr style="grid-column:1/-1; border:none; border-top:1px solid var(--line); margin:4px 0; width:100%;">
+                                <span class="cost-ih-grand-label">Total $/unit</span>
+                                <span class="cost-ih-grand-value" id="ca-ih-grand">—</span>
+                            </div>
                         </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Qty Bought (reference)</label>
-                            <input type="number" class="form-control" id="ca-ih-mat-qty" value="${matQtyBought}" min="0" step="0.001" placeholder="0">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Total Material Cost (batch)</label>
-                            <input type="text" class="form-control" id="ca-ih-mat-total-ro" readonly
-                                style="background:var(--surface-2); color:var(--muted);" placeholder="auto-calculated">
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Overhead (%)</label>
-                            <input type="number" class="form-control" id="ca-ih-oh" value="${ohPct}" min="0" step="0.1" placeholder="0"
-                                oninput="window._ca._ihUpdateTotal()">
-                        </div>
-                    </div>
-
-                    <div class="cost-ih-total-row">
-                        <span>Machine Total:</span><span id="ca-ih-mach-total">—</span>
-                        <span>+ Labor:</span><span id="ca-ih-labor-total">—</span>
-                        <span>+ Material:</span><span id="ca-ih-mat-display">—</span>
-                        <span>+ Overhead:</span><span id="ca-ih-oh-display">—</span>
-                        <span class="cost-ih-grand-label">Total In-House $/unit:</span>
-                        <span class="cost-ih-grand-value" id="ca-ih-grand">—</span>
                     </div>
                 </div>
                 <div class="modal-footer">

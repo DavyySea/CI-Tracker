@@ -3256,6 +3256,11 @@ tr:hover td { background: rgba(85,153,204,0.025); }
     width: 95vw;
 }
 
+.modal-wide {
+    max-width: 900px;
+    width: 96vw;
+}
+
 /* =========================
    Saronic Theme — Icon / Emoji Colorway
    ========================= */
@@ -4283,6 +4288,28 @@ kbd {
     margin-top: 2px;
     min-height: 14px;
     font-style: italic;
+}
+
+/* In-house modal two-column layout */
+.ih-modal-layout {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 0 24px;
+}
+.ih-modal-right {
+    border-left: 1px solid var(--line);
+    padding-left: 24px;
+}
+.cost-ih-total-stack {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 5px 12px;
+    align-items: center;
+    padding: 12px 14px;
+    background: var(--surface-2);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    margin-top: 8px;
 }
 
 /* Form section dividers */
