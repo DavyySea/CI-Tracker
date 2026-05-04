@@ -7552,3 +7552,1344 @@ select.form-control {
 }
 .form-control::placeholder { color: var(--text-3); }
 
+
+/* ══════════════════════════════════════════════════════════════════════════
+   DEPLOY A — GLOBAL POLISH + COST ANALYSIS
+   Adds: hover/glow/motion across every interactive element on every page,
+   plus a complete redesign of the Cost Analysis filter bar, KPI strip,
+   table, drawer, chips, and sub-pages. Pure CSS additions — no JS dependencies
+   beyond what's already in index.html.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+
+/* ──────────────────────────────────────────────────────────────────────
+   1) GLOBAL INTERACTION LAYER
+   Subtle, system-feel: hover lifts, accent glow on focus, smooth motion.
+   ────────────────────────────────────────────────────────────────────── */
+
+/* Every clickable surface gets a tactile hover/press reaction. The :where()
+   wrapper keeps specificity low so existing rules can still override. */
+:where(button, .btn, .btn-topbar, .nav-link, .tab-btn, .kanban-tab-btn,
+       .project-view-tab, .cost-view-tab, .ca-risk-pill, .sm-tab, .sm-d-cell,
+       .pipeline-card, .savings-pipeline-card, .ca-audit-stat,
+       .vessel-head, [data-row-toggle], .activity-row, .calendar-grid > *,
+       a[href]):active {
+    transform: scale(0.98);
+    transition: transform 80ms ease-out;
+}
+
+/* Universal focus ring — never an OS default */
+*:focus-visible {
+    outline: 0;
+    box-shadow: 0 0 0 3px var(--focus) !important;
+    border-radius: 4px;
+}
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+.search-input:focus-visible,
+.filter-select:focus-visible,
+.global-search-input:focus-visible,
+.cost-bpy-input:focus-visible,
+.form-control:focus-visible {
+    box-shadow: 0 0 0 3px var(--focus), 0 0 12px rgba(85, 153, 204, 0.10) !important;
+}
+
+/* Primary buttons get a soft halo when focused — feels like a primed control */
+.btn-primary:focus-visible,
+.btn-topbar-primary:focus-visible {
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.12),
+        0 0 0 3px rgba(85, 153, 204, 0.40),
+        0 0 18px rgba(85, 153, 204, 0.20) !important;
+}
+
+/* Search input gains a glow when focused — reactive system */
+.global-search-input:focus,
+.search-input:focus,
+.ca-filter-search:focus {
+    box-shadow:
+        0 0 0 3px var(--focus),
+        0 0 18px rgba(85, 153, 204, 0.12) !important;
+}
+
+/* Subtle accent line under every page header */
+.page-header {
+    position: relative;
+}
+.page-header::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0; bottom: -10px;
+    height: 1px;
+    background: linear-gradient(90deg, var(--accent) 0%, transparent 60%);
+    opacity: 0.30;
+    pointer-events: none;
+}
+
+/* All cards get a unified press state */
+:where(.card, .dashboard-subcard, .issue-card, .project-card, .aar-card,
+       .kpi-card, .meeting-card, .contact-card, .product-card, .area-card,
+       .supplier-card, .process-card, .note-card, .sm-pcard, .ca-audit-stat,
+       .cost-kpi-card, .ca-kpi-stat, .ca-kpi-stat-link):active {
+    transform: translateY(0) scale(0.99);
+    transition: transform 80ms ease-out !important;
+}
+
+/* All card vessels share an identical hover-glow signature */
+:where(.card, .dashboard-subcard, .issue-card, .project-card, .aar-card,
+       .kpi-card, .meeting-card, .contact-card, .product-card, .area-card,
+       .supplier-card, .process-card, .ca-audit-stat, .cost-kpi-card,
+       .ca-kpi-stat, .ca-kpi-stat-link, .sm-pcard):hover {
+    box-shadow:
+        0 12px 32px rgba(0, 0, 0, 0.45),
+        0 0 0 1px var(--line-bright) inset,
+        0 0 24px rgba(85, 153, 204, 0.06) !important;
+}
+
+/* Active nav link — stronger left rule + a soft halo */
+.nav-link.active {
+    box-shadow: inset 3px 0 12px rgba(85, 153, 204, 0.10);
+    position: relative;
+}
+.nav-link.active::after {
+    content: '';
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 6px var(--accent-glow);
+    transform: translateY(-50%);
+    animation: navDot 2.4s ease-in-out infinite;
+}
+@keyframes navDot {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.4; }
+}
+
+/* Make the badge counter glow when active page is one with alerts */
+.nav-link.active .nav-badge {
+    border-color: var(--line-bright);
+    color: var(--text);
+}
+
+/* All status pills get a tiny glow when paired with a "live" context */
+.severity-critical, .badge-critical, .pill.crit {
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.15);
+}
+
+/* Active tab — accent rail + soft glow under the line */
+.tab-btn.active,
+.kanban-tab-btn.active,
+.project-view-tab.active,
+.cost-view-tab.active {
+    position: relative;
+}
+.tab-btn.active::after,
+.kanban-tab-btn.active::after,
+.project-view-tab.active::after,
+.cost-view-tab.active::after {
+    content: '';
+    position: absolute;
+    left: 14px; right: 14px; bottom: -2px;
+    height: 4px;
+    background: radial-gradient(ellipse at center, var(--accent-glow), transparent 70%);
+    pointer-events: none;
+}
+
+/* Universal smooth-transition fallback for elements that swap state */
+.tab-content,
+.dashboard-grid,
+.dashboard-subcard,
+.issue-card,
+.project-card {
+    transition: opacity var(--t-base), transform var(--t-base);
+}
+
+/* Status dots — anywhere a `.status-dot` shows up */
+.status-dot,
+.live-indicator,
+.live-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+}
+.status-dot.live,
+.live-dot,
+.live-indicator {
+    background: var(--success);
+    box-shadow: 0 0 6px rgba(74, 222, 128, 0.6);
+    animation: pulse 2.4s ease-in-out infinite;
+}
+@keyframes statusPulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.4; }
+}
+
+/* "Last updated" / sync timestamp pill — small, mono, aligned right */
+.last-updated,
+.sync-indicator,
+[data-last-updated] {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-3);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.last-updated::before,
+.sync-indicator::before {
+    content: '';
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: var(--success);
+    box-shadow: 0 0 4px rgba(74, 222, 128, 0.5);
+    animation: pulse 2.4s ease-in-out infinite;
+}
+
+/* Entry animation for any newly-rendered card list */
+@keyframes vesselFadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Stagger-in for grids that hold many cards */
+.issue-list .issue-card,
+.project-list .project-card,
+.aar-list .aar-card,
+.contacts-grid .contact-card,
+.products-grid .product-card,
+.areas-grid .area-card,
+.suppliers-grid .supplier-card,
+.process-list .process-card,
+.notes-grid .note-card,
+.dashboard-subcard {
+    animation: vesselFadeIn 320ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+.issue-list .issue-card:nth-child(1),
+.project-list .project-card:nth-child(1),
+.contacts-grid .contact-card:nth-child(1),
+.products-grid .product-card:nth-child(1),
+.suppliers-grid .supplier-card:nth-child(1) { animation-delay: 0.04s; }
+.issue-list .issue-card:nth-child(2),
+.project-list .project-card:nth-child(2),
+.contacts-grid .contact-card:nth-child(2),
+.products-grid .product-card:nth-child(2),
+.suppliers-grid .supplier-card:nth-child(2) { animation-delay: 0.08s; }
+.issue-list .issue-card:nth-child(3),
+.project-list .project-card:nth-child(3),
+.contacts-grid .contact-card:nth-child(3),
+.products-grid .product-card:nth-child(3),
+.suppliers-grid .supplier-card:nth-child(3) { animation-delay: 0.12s; }
+.issue-list .issue-card:nth-child(4),
+.project-list .project-card:nth-child(4),
+.contacts-grid .contact-card:nth-child(4),
+.products-grid .product-card:nth-child(4),
+.suppliers-grid .supplier-card:nth-child(4) { animation-delay: 0.16s; }
+.issue-list .issue-card:nth-child(5),
+.project-list .project-card:nth-child(5),
+.contacts-grid .contact-card:nth-child(5),
+.products-grid .product-card:nth-child(5),
+.suppliers-grid .supplier-card:nth-child(5) { animation-delay: 0.20s; }
+.issue-list .issue-card:nth-child(n+6),
+.project-list .project-card:nth-child(n+6),
+.contacts-grid .contact-card:nth-child(n+6),
+.products-grid .product-card:nth-child(n+6),
+.suppliers-grid .supplier-card:nth-child(n+6) { animation-delay: 0.24s; }
+
+/* Subtle scan-line on top of any sticky header — "tactical" cue */
+.top-bar::before {
+    content: '';
+    position: absolute;
+    bottom: -1px; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent) 30%, var(--accent) 70%, transparent);
+    opacity: 0.15;
+    pointer-events: none;
+}
+
+/* All select dropdowns get the unified chevron */
+select,
+select.filter-select,
+select.form-control,
+.ca-filter-select {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    background-image: var(--select-arrow) !important;
+    background-repeat: no-repeat !important;
+    background-position: right 10px center !important;
+    padding-right: 28px !important;
+    cursor: pointer;
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   2) UNIVERSAL TABLE TREATMENT
+   Any <table> inherits the tactical mono-numeric look.
+   ────────────────────────────────────────────────────────────────────── */
+.data-table,
+table.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    background: transparent;
+}
+.data-table thead th,
+table.data-table thead th {
+    background: var(--bg-1);
+    color: var(--text-3);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-weight: 500;
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line-2);
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+}
+.data-table tbody td,
+table.data-table tbody td {
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--line);
+    color: var(--text);
+}
+.data-table tbody tr,
+table.data-table tbody tr {
+    transition: background var(--t-fast);
+}
+.data-table tbody tr:hover,
+table.data-table tbody tr:hover {
+    background: rgba(85, 153, 204, 0.05);
+}
+.data-table tbody tr:last-child td,
+table.data-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+/* Every numeric cell gets mono tabular */
+.data-table td.num,
+.data-table td.qty,
+.data-table td.cost,
+.data-table td.price,
+.data-table td.amount,
+.data-table td.count {
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   3) CHIP / TAG SYSTEM (active filters, status tags, etc.)
+   ────────────────────────────────────────────────────────────────────── */
+.chip,
+.filter-chip,
+.active-filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 3px 9px;
+    background: var(--accent-soft);
+    color: var(--accent-bright);
+    border: 1px solid rgba(85, 153, 204, 0.30);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: all var(--t-base);
+}
+.chip:hover,
+.filter-chip:hover,
+.active-filter-chip:hover {
+    background: rgba(85, 153, 204, 0.18);
+    border-color: var(--accent);
+}
+.chip-remove,
+.filter-chip-remove {
+    color: var(--accent-bright);
+    opacity: 0.6;
+    cursor: pointer;
+    margin-left: 2px;
+    transition: opacity var(--t-fast);
+}
+.chip-remove:hover,
+.filter-chip-remove:hover {
+    opacity: 1;
+    color: var(--danger);
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   4) COST ANALYSIS — FULL OPERATIONAL POLISH
+   The page is dense and high-traffic. Treat it as a tactical readout:
+   • Filter bar = control panel (vessel-style, glow on focus)
+   • KPI strip = telemetry (mono numerics, accent left rules)
+   • Parts table = the readout (frozen header, hover-tinted rows)
+   • Risk navigation = pill grouping
+   • Chart panels = vessels with title strips
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── Filter bar: vessel-style control panel ─── */
+.ca-filter-bar {
+    background: linear-gradient(180deg, var(--surface) 0%, var(--bg-2) 100%);
+    border: 1px solid var(--line);
+    border-radius: var(--vessel-radius);
+    padding: 12px 14px;
+    margin-bottom: 14px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 14px;
+    box-shadow: var(--shadow-vessel);
+    position: relative;
+}
+.ca-filter-bar::before {
+    content: '';
+    position: absolute;
+    top: -1px; left: 14px; right: 14px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent) 50%, transparent);
+    opacity: 0.5;
+    pointer-events: none;
+}
+.ca-filter-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    font-weight: 500;
+    margin-right: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.ca-filter-label::before {
+    content: '';
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 4px var(--accent-glow);
+}
+.ca-filter-select,
+.ca-filter-search {
+    background: var(--bg-1);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 7px 10px;
+    font-size: 12px;
+    color: var(--text);
+    font-family: inherit;
+    outline: 0;
+    min-width: 140px;
+    transition: border-color var(--t-base), box-shadow var(--t-base), background var(--t-base);
+}
+.ca-filter-search {
+    min-width: 220px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238a9bb0' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: 10px center;
+    padding-left: 30px;
+}
+.ca-filter-select:hover,
+.ca-filter-search:hover {
+    border-color: var(--line-2);
+    background-color: var(--surface);
+}
+.ca-filter-select:focus,
+.ca-filter-search:focus {
+    border-color: var(--accent);
+    box-shadow:
+        0 0 0 3px var(--focus),
+        0 0 16px rgba(85, 153, 204, 0.12);
+    background-color: var(--surface);
+}
+.ca-filter-search::placeholder { color: var(--text-3); }
+
+/* ─── KPI strip — full-width telemetry ─── */
+.ca-kpi-stat-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+    margin-bottom: 16px;
+}
+.ca-kpi-stat,
+.ca-kpi-stat-link {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--vessel-radius);
+    padding: 14px 16px;
+    box-shadow: var(--shadow-vessel);
+    transition:
+        transform var(--t-base),
+        border-color var(--t-base),
+        box-shadow var(--t-base),
+        background var(--t-base);
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+.ca-kpi-stat::before,
+.ca-kpi-stat-link::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; bottom: 0;
+    width: 3px;
+    background: var(--accent);
+    opacity: 0;
+    transition: opacity var(--t-base);
+}
+.ca-kpi-stat:hover,
+.ca-kpi-stat-link:hover {
+    transform: translateY(-2px);
+    border-color: var(--line-bright);
+    background: var(--surface-2);
+}
+.ca-kpi-stat:hover::before,
+.ca-kpi-stat-link:hover::before { opacity: 1; }
+
+.ca-kpi-stat-alert {
+    border-left: 3px solid var(--danger);
+}
+.ca-kpi-stat-alert .ca-kpi-stat-value {
+    color: var(--danger-text);
+}
+.ca-kpi-stat-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    color: var(--text);
+    line-height: 1;
+    margin-bottom: 4px;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+}
+.ca-kpi-stat-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-weight: 500;
+}
+.ca-kpi-stat-link .ca-kpi-stat-label::after {
+    content: ' →';
+    color: var(--text-4);
+    transition: color var(--t-base), padding var(--t-base);
+}
+.ca-kpi-stat-link:hover .ca-kpi-stat-label::after {
+    color: var(--accent);
+    padding-left: 4px;
+}
+
+/* ─── Risk navigation pills ─── */
+.ca-risk-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 16px;
+    padding: 10px 12px;
+    background: var(--bg-1);
+    border: 1px solid var(--line);
+    border-radius: var(--vessel-radius);
+}
+.ca-risk-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.10em;
+    padding: 5px 10px;
+    background: var(--surface);
+    color: var(--text-3);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all var(--t-base);
+    text-decoration: none;
+}
+.ca-risk-pill:hover {
+    border-color: var(--line-bright);
+    color: var(--text);
+    background: var(--surface-2);
+}
+.ca-risk-pill.active {
+    background: var(--accent-soft);
+    color: var(--accent-bright);
+    border-color: rgba(85, 153, 204, 0.40);
+    font-weight: 600;
+    box-shadow: 0 0 12px rgba(85, 153, 204, 0.10);
+}
+.ca-risk-pill-count {
+    font-size: 10px;
+    color: var(--text-4);
+    font-weight: 700;
+    padding: 0 5px;
+    background: var(--bg-1);
+    border-radius: 2px;
+    min-width: 18px;
+    text-align: center;
+}
+.ca-risk-pill.active .ca-risk-pill-count {
+    background: var(--accent);
+    color: #fff;
+}
+
+/* ─── Risk section header — when a section is selected ─── */
+.ca-risk-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+.ca-risk-section-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 16px;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: var(--vessel-radius) var(--vessel-radius) 0 0;
+    border-bottom: 0;
+}
+.ca-risk-section-icon {
+    font-size: 18px;
+    line-height: 1.2;
+    margin-top: 2px;
+}
+.ca-risk-section-sub {
+    font-size: 11px;
+    color: var(--text-3);
+    margin-top: 3px;
+    font-weight: 400;
+}
+.ca-risk-section .cost-table-wrap {
+    border-radius: 0 0 var(--vessel-radius) var(--vessel-radius);
+    border-top: 0;
+    margin: 0;
+}
+
+/* ─── Audit page badges ─── */
+.ca-audit-badge {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 2px;
+    margin: 1px 2px;
+    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    background: var(--surface-2);
+    color: var(--text-3);
+    border: 1px solid var(--line);
+}
+.ca-audit-stat-active {
+    background: var(--surface-2);
+    border-color: var(--accent);
+    box-shadow:
+        0 0 0 1px var(--accent) inset,
+        0 0 16px rgba(85, 153, 204, 0.18) !important;
+}
+.ca-audit-stat-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-weight: 500;
+}
+.ca-audit-stat-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 22px;
+    font-weight: 600;
+    line-height: 1;
+    margin-bottom: 4px;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+}
+.ca-audit-table-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-2);
+}
+.ca-audit-table-scroll {
+    max-height: 380px;
+    overflow-y: auto;
+    border: 1px solid var(--line);
+    border-radius: var(--vessel-radius);
+    background: var(--surface);
+}
+.ca-audit-table-scroll .data-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--bg-1);
+}
+
+/* ─── Chart wrappers ─── */
+.ca-charts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    gap: 14px;
+    margin-bottom: 16px;
+}
+.ca-chart-box {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--vessel-radius);
+    padding: 0;
+    box-shadow: var(--shadow-vessel);
+    overflow: hidden;
+    transition: transform var(--t-base), border-color var(--t-base), box-shadow var(--t-base);
+}
+.ca-chart-box:hover {
+    transform: translateY(-2px);
+    border-color: var(--line-bright);
+    box-shadow: var(--shadow-vessel-hover);
+}
+.ca-chart-title {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-2);
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    font-weight: 600;
+    background: var(--bg-1);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.ca-chart-title::before {
+    content: '';
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 6px var(--accent-glow);
+}
+.ca-chart-wrap {
+    padding: 14px 16px 16px;
+    min-height: 220px;
+    position: relative;
+}
+
+/* ─── Sortable table headers ─── */
+.ca-th-sort {
+    cursor: pointer;
+    user-select: none;
+    transition: color var(--t-fast);
+    position: relative;
+    padding-right: 22px !important;
+}
+.ca-th-sort:hover {
+    color: var(--text);
+}
+.ca-th-sort::after {
+    content: '↕';
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-4);
+    font-size: 10px;
+    opacity: 0.5;
+    transition: opacity var(--t-fast), color var(--t-fast);
+}
+.ca-th-sort:hover::after { opacity: 1; }
+.ca-th-sort-active {
+    color: var(--accent-bright) !important;
+}
+.ca-th-sort-active::after {
+    color: var(--accent);
+    opacity: 1;
+}
+.ca-th-sort-active[data-dir="asc"]::after { content: '↑'; }
+.ca-th-sort-active[data-dir="desc"]::after { content: '↓'; }
+
+/* ─── Detail header (when drilling into a part) ─── */
+.ca-detail-page {
+    padding: 0;
+}
+.ca-detail-header {
+    background: linear-gradient(180deg, var(--surface) 0%, var(--bg-2) 100%);
+    border: 1px solid var(--line);
+    border-radius: var(--vessel-radius);
+    padding: 16px 20px;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    flex-wrap: wrap;
+    box-shadow: var(--shadow-vessel);
+    position: relative;
+}
+.ca-detail-header::before {
+    content: '';
+    position: absolute;
+    top: -1px; left: 16px; right: 16px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent) 50%, transparent);
+    opacity: 0.4;
+}
+.ca-detail-title {
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    margin: 0;
+}
+
+/* ─── Expiry banner ─── */
+.ca-expiry-banner {
+    background: rgba(239, 68, 68, 0.06);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    border-left: 3px solid var(--danger);
+    border-radius: var(--vessel-radius);
+    padding: 10px 14px;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+    font-size: 12px;
+    color: var(--text);
+    box-shadow: 0 0 16px rgba(239, 68, 68, 0.04);
+}
+.ca-expiry-banner .ca-eb-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--danger-text) !important;
+    margin-right: 6px;
+}
+.ca-expiry-banner .ca-eb-item {
+    cursor: pointer;
+    color: var(--text);
+    text-decoration: none;
+    border-bottom: 1px dashed var(--line-2);
+    transition: color var(--t-base), border-color var(--t-base);
+}
+.ca-expiry-banner .ca-eb-item:hover {
+    color: var(--accent-bright);
+    border-bottom-color: var(--accent);
+}
+.ca-expiry-banner .ca-eb-sep {
+    color: var(--text-4);
+    margin: 0 4px;
+}
+
+/* ─── TLA toolbar / add row ─── */
+.ca-tla-toolbar {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+}
+.ca-tla-add-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+    padding: 12px 14px;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: var(--vessel-radius);
+}
+.ca-tla-detail-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 14px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--line);
+}
+
+/* ─── Cost table — refine the existing rules I added in 1.5 ─── */
+.cost-table-wrap {
+    box-shadow: var(--shadow-vessel);
+    transition: box-shadow var(--t-base);
+}
+.cost-table-wrap:hover {
+    box-shadow: var(--shadow-vessel-hover);
+}
+.cost-table tbody tr {
+    position: relative;
+}
+.cost-table tbody tr::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 2px;
+    background: var(--accent);
+    transform: scaleY(0);
+    transition: transform var(--t-base);
+    transform-origin: center;
+}
+.cost-table tbody tr:hover::before {
+    transform: scaleY(0.6);
+}
+
+/* Pulse for "fresh data" rows */
+.cost-table tr.is-fresh {
+    animation: rowFresh 1.6s ease-out;
+}
+@keyframes rowFresh {
+    0%   { background: rgba(85, 153, 204, 0.18); }
+    100% { background: transparent; }
+}
+
+/* ─── Empty state for Cost Analysis ─── */
+.ca-empty-state,
+.cost-empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-3);
+    font-size: 13px;
+    background: var(--surface);
+    border: 1px dashed var(--line);
+    border-radius: var(--vessel-radius);
+}
+.ca-empty-state h3,
+.cost-empty h3 {
+    color: var(--text-2);
+    font-size: 15px;
+    margin-bottom: 6px;
+    font-weight: 500;
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   5) MISC GLOBAL POLISH — small fixes I noticed across pages
+   ────────────────────────────────────────────────────────────────────── */
+
+/* Issue card metadata — keep alignment clean */
+.issue-card-meta strong,
+.project-card-meta strong,
+.aar-card-meta strong {
+    color: var(--accent-bright);
+    font-weight: 500;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+}
+
+/* Description blocks under cards */
+.issue-card-description,
+.project-card-description,
+.aar-card-description {
+    color: var(--text-2);
+    font-size: 12px;
+    margin-top: 6px;
+    line-height: 1.55;
+}
+
+/* "Add" / floating action buttons get a soft glow */
+.btn-add,
+.fab,
+.floating-add {
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.12),
+        0 4px 12px rgba(85, 153, 204, 0.20);
+}
+
+/* Settings page — give the toggle rows some breathing room */
+.settings-row,
+.settings-section {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--vessel-radius);
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    transition: border-color var(--t-base), background var(--t-base);
+}
+.settings-row:hover,
+.settings-section:hover {
+    border-color: var(--line-bright);
+    background: var(--surface-2);
+}
+
+/* Help & Guide content */
+.help-section,
+.guide-section {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--vessel-radius);
+    padding: 18px 20px;
+    margin-bottom: 12px;
+}
+.help-section h2,
+.guide-section h2 {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--line);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.help-section h2::before,
+.guide-section h2::before {
+    content: '';
+    width: 5px; height: 5px;
+    background: var(--accent);
+    border-radius: 50%;
+    box-shadow: 0 0 6px var(--accent-glow);
+}
+
+/* Toggle switches — wherever they appear */
+.toggle,
+input[type="checkbox"].toggle,
+.switch {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 32px;
+    height: 18px;
+    background: var(--surface-3);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    position: relative;
+    cursor: pointer;
+    transition: background var(--t-base), border-color var(--t-base);
+    flex-shrink: 0;
+}
+.toggle::before,
+input[type="checkbox"].toggle::before,
+.switch::before {
+    content: '';
+    position: absolute;
+    top: 1px; left: 2px;
+    width: 12px; height: 12px;
+    background: var(--text-3);
+    border-radius: 50%;
+    transition: left var(--t-base), background var(--t-base);
+}
+.toggle:checked,
+input[type="checkbox"].toggle:checked,
+.switch.active {
+    background: var(--accent);
+    border-color: var(--accent);
+}
+.toggle:checked::before,
+input[type="checkbox"].toggle:checked::before,
+.switch.active::before {
+    left: 17px;
+    background: #fff;
+}
+
+/* Notes — give pinned cards a soft glow */
+.note-card.pinned {
+    box-shadow:
+        var(--shadow-vessel),
+        0 0 16px rgba(85, 153, 204, 0.08);
+}
+.note-card.pinned::before {
+    content: 'PINNED';
+    position: absolute;
+    top: 6px; right: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    color: var(--accent);
+    letter-spacing: 0.16em;
+    font-weight: 600;
+}
+
+/* Calendar — add a glow on today's cell */
+.calendar-grid .today {
+    box-shadow: inset 0 0 12px rgba(85, 153, 204, 0.10);
+    position: relative;
+}
+.calendar-grid .today::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: var(--accent);
+    box-shadow: 0 0 4px var(--accent-glow);
+}
+
+/* Day-drawer (calendar) — soft entrance */
+.day-drawer.open {
+    animation: drawerSlide var(--t-slow) cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes drawerSlide {
+    from { transform: translateX(40px); opacity: 0; }
+    to   { transform: translateX(0); opacity: 1; }
+}
+
+/* Modal title hairline above */
+.modal::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 14px; right: 14px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent) 50%, transparent);
+    opacity: 0.5;
+    pointer-events: none;
+}
+.modal { position: relative; }
+
+/* Suppliers — supplier card emphasis */
+.supplier-card {
+    position: relative;
+}
+.supplier-card .supplier-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+}
+.supplier-card .supplier-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-3);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+/* DMAIC — phase tabs */
+.dmaic-phase-tabs,
+.dmaic-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 16px;
+}
+.dmaic-phase-tab {
+    padding: 9px 18px;
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    color: var(--text-3);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    cursor: pointer;
+    transition: color var(--t-base), border-color var(--t-base), background var(--t-base);
+    margin-bottom: -1px;
+}
+.dmaic-phase-tab:hover { color: var(--text); }
+.dmaic-phase-tab.active {
+    color: var(--text);
+    border-bottom-color: var(--accent);
+    background: linear-gradient(180deg, transparent 0%, rgba(85,153,204,0.04) 100%);
+}
+
+/* Process Library — process card */
+.process-card {
+    position: relative;
+}
+.process-card .process-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   6) BUTTON ICON / SVG — make sure SVG strokes inherit currentColor
+   ────────────────────────────────────────────────────────────────────── */
+.btn svg,
+.btn-topbar svg,
+.nav-link svg {
+    width: 14px;
+    height: 14px;
+    stroke: currentColor;
+    fill: none;
+    flex-shrink: 0;
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   7) RESPONSIVE FALLBACKS for the polish layer
+   ────────────────────────────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+    .ca-filter-bar { padding: 10px 12px; }
+    .ca-kpi-stat-strip { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+    .ca-charts-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 768px) {
+    .ca-filter-bar { gap: 8px; }
+    .ca-filter-search { min-width: 100%; }
+    .cost-kpi-strip,
+    .ca-kpi-stat-strip { grid-template-columns: repeat(2, 1fr); }
+    .nav-link.active::after { display: none; }
+}
+
+
+/* ──────────────────────────────────────────────────────────────────────
+   8) STRAGGLER CLASSES (used in index.html, no styling before)
+   ────────────────────────────────────────────────────────────────────── */
+
+/* DMAIC project selector */
+.dmaic-selector {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--vessel-radius);
+    padding: 12px 14px;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.dmaic-selector label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    font-weight: 500;
+}
+.dmaic-selector select {
+    background: var(--bg-1);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 7px 10px;
+    font-size: 12px;
+    color: var(--text);
+    outline: 0;
+    transition: border-color var(--t-base), box-shadow var(--t-base);
+    min-width: 200px;
+    flex: 1;
+    max-width: 360px;
+}
+.dmaic-selector select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--focus);
+}
+
+.dmaic-tabs-container {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--vessel-radius);
+    padding: 0;
+    overflow: hidden;
+    box-shadow: var(--shadow-vessel);
+}
+
+/* Health badge — generic project/issue health pill */
+.health-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    padding: 2px 7px;
+    border-radius: 2px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.10em;
+    border: 1px solid;
+    background: var(--surface-2);
+    color: var(--text-2);
+    border-color: var(--line);
+}
+.health-badge::before {
+    content: '';
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.7;
+}
+.health-badge.health-on-track,
+.health-badge.on-track {
+    background: rgba(74, 222, 128, 0.08);
+    color: var(--success-text);
+    border-color: rgba(74, 222, 128, 0.25);
+}
+.health-badge.health-at-risk,
+.health-badge.at-risk {
+    background: rgba(251, 191, 36, 0.08);
+    color: var(--warning-text);
+    border-color: rgba(251, 191, 36, 0.30);
+}
+.health-badge.health-off-track,
+.health-badge.off-track {
+    background: rgba(239, 68, 68, 0.10);
+    color: var(--danger-text);
+    border-color: rgba(239, 68, 68, 0.30);
+}
+
+/* Help / Guide content wrapper */
+.help-content {
+    max-width: 880px;
+}
+.help-content p {
+    color: var(--text-2);
+    font-size: 13px;
+    line-height: 1.65;
+    margin-bottom: 12px;
+}
+.help-content code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    background: var(--surface-2);
+    color: var(--accent-bright);
+    padding: 1px 6px;
+    border-radius: 3px;
+    border: 1px solid var(--line);
+}
+.help-content kbd {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    background: var(--surface-2);
+    color: var(--text);
+    padding: 2px 6px;
+    border-radius: 3px;
+    border: 1px solid var(--line-2);
+    box-shadow: 0 1px 0 var(--line);
+    letter-spacing: 0.04em;
+}
+.help-content ul,
+.help-content ol {
+    margin: 8px 0 12px 20px;
+    color: var(--text-2);
+    font-size: 13px;
+    line-height: 1.7;
+}
+.help-content ul li,
+.help-content ol li {
+    margin-bottom: 4px;
+}
+
+/* KPI grid (used by KPIs page) */
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+}
+
